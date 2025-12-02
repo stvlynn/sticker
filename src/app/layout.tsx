@@ -4,6 +4,9 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'Lynn-chan Stickers',
   description: 'A collection of Lynn Chan stickers and memes',
+  icons: {
+    icon: '/icon.png',
+  },
   openGraph: {
     title: 'Lynn-chan Stickers',
     description: 'A collection of Lynn Chan stickers and memes',
