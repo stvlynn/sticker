@@ -1,0 +1,83 @@
+export interface Sticker {
+  id: string
+  title: string
+  pngUrl: string
+}
+
+// 从文件名生成贴纸数据
+const stickerFiles = [
+  '007.png',
+  '8000.png',
+  'AI生成.png',
+  'OB.png',
+  'allin.png',
+  'attention.png',
+  'chatgpt.png',
+  'claude.png',
+  'ddl.png',
+  'dify.png',
+  'gal.png',
+  'idea.png',
+  'itworks.png',
+  'llama.png',
+  'mhy.png',
+  'outofmemory.png',
+  'prompt大师.png',
+  'sota.png',
+  'tcdw.png',
+  'token不足.png',
+  'urright.png',
+  'vibeweave.png',
+  'zeroshot.png',
+  '上下文过长.png',
+  '不如麦当劳.png',
+  '今天吃肉.png',
+  '全干工程师.png',
+  '准点下班.png',
+  '加载中.png',
+  '压抑.png',
+  '又亏了.png',
+  '吃惊.png',
+  '咖啡.png',
+  '在忙.png',
+  '对齐.png',
+  '干饭.png',
+  '幻觉.png',
+  '开会中.png',
+  '微调中.png',
+  '怎么改.png',
+  '怒了.png',
+  '思考.png',
+  '愤怒.png',
+  '打call.png',
+  '打工人.png',
+  '打边炉.png',
+  '技术调整.png',
+  '抄底成功.png',
+  '推理完成.png',
+  '摸鱼.png',
+  '晚安.png',
+  '服务器炸了.png',
+  '梭哈.png',
+  '求打赏.png',
+  '画大饼.png',
+  '疯狂星期六.png',
+  '稳如老狗.png',
+  '贴贴.png',
+  '跌.png',
+  '连接失败.png',
+  '需求多.png',
+  '项目上线.png',
+  '饮茶.png',
+  '饿饿饭饭.png',
+  '黑暗料理.png',
+]
+
+export const stickers: Sticker[] = stickerFiles.map((filename) => {
+  const title = filename.replace('.png', '')
+  return {
+    id: title,
+    title,
+    pngUrl: `/stickers/${filename}`,
+  }
+})
