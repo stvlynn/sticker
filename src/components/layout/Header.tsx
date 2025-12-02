@@ -106,7 +106,7 @@ export function Header({ onSearch }: HeaderProps) {
                     <span>X: x.com/Stv_Lynn</span>
                   </a>
                   <a
-                    href="https://github.com/stvlynn/lynn-chan"
+                    href="https://github.com/stvlynn/sticker"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-100"

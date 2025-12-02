@@ -13,13 +13,13 @@ export function Footer() {
 
           {/* Right: GitHub Link */}
           <a
-            href="https://github.com/stvlynn/lynn-chan"
+            href="https://github.com/stvlynn/sticker"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-xs text-gray-500 hover:text-foreground transition-colors font-mono"
           >
             <Github className="w-4 h-4" />
-            <span>github.com/stvlynn/lynn-chan</span>
+            <span>github.com/stvlynn/sticker</span>
           </a>
         </div>
       </div>
