@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Hero } from '@/components/layout/Hero'
+import { Footer } from '@/components/layout/Footer'
 import { StickerGrid } from '@/components/sticker/StickerGrid'
 import { stickers } from '@/data/stickers'
 
@@ -38,6 +39,7 @@ export default function Home() {
           </div>
         </section>
       </main>
+      <Footer />
     </>
   )
 }
