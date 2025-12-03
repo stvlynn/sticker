@@ -1,6 +1,8 @@
 # Lynn-chan Stickers
 
-![Lynn-chan](./public/stickers/mhy.png)
+<div align="center">
+  <img src="./public/stickers/mhy.png" alt="Lynn-chan" width="200" height="200">
+</div>
 
 ## 使用 Sticker
 
