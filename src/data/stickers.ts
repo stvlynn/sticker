@@ -71,6 +71,20 @@ const stickerFiles = [
   '饮茶.png',
   '饿饿饭饭.png',
   '黑暗料理.png',
+  'angry.png',
+  'angry_veins.png',
+  'bubble_tea.png',
+  'coffee_desperate.png',
+  'confused.png',
+  'deadpan.png',
+  'detective.png',
+  'evil_grin.png',
+  'its_fire.png',
+  'loading.png',
+  'monster.png',
+  'ok_hand.png',
+  'orange.png',
+  'yandere_knife.png',
 ]
 
 export const stickers: Sticker[] = stickerFiles.map((filename) => {
