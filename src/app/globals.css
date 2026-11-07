@@ -19,6 +19,12 @@ h1, h2, h3, h4, h5, h6 {
   font-family: 'Bricolage Grotesque', system-ui, sans-serif;
 }
 
+@media (hover: none) {
+  .sticker-actions {
+    opacity: 1;
+  }
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   * {
