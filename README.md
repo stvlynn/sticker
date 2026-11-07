@@ -12,6 +12,13 @@
 
 [在 Telegram 中添加 Lynn-chan Sticker Pack](https://t.me/addstickers/lynnchan)
 
+动态贴纸（2026-11-06 发布，共 181 张）：
+
+- [Lynn Sticker @stvlynn 1 · 120 张](https://t.me/addstickers/lynn_sticker_stvlynn_1_by_lynn_ai_bot)
+- [Lynn Sticker @stvlynn 2 · 61 张](https://t.me/addstickers/lynn_sticker_stvlynn_2_by_lynn_ai_bot)
+
+网站支持“静态／动态”标签切换、当前类型内搜索，以及动态贴纸 WebM 原文件下载。动态贴纸仅在可见区域静音循环播放，开启系统“减少动态效果”后显示静态预览。
+
 ### 微信
 
 ![sticker.weixin.qq.com_cgi-bin_mmemoticonwebnode-bin_pages_stickerPage_setting_stikerid_stiker_176451914991ba5a1d2bd4a81f.png](https://s2.loli.net/2025/12/03/5uGkTNDiHsfF8MQ.png)
@@ -115,6 +122,16 @@ npm run dev
 
 # 访问 http://localhost:3000
 ```
+
+### 同步已发布的动态贴纸
+
+资源及来源、顺序和 SHA-256 记录分别保存在 `public/stickers/animated/` 与 `src/data/animated-stickers.json`，运行网站无需 OpenSticker 项目。需要从发布工作目录重新同步时：
+
+```bash
+node scripts/sync-animated-stickers.mjs ~/code/OpenSticker/.workspace/lynn-telegram
+```
+
+脚本只导入 `pack-plan.json` 中已发布的条目，并核对 `published.json` 的数量和每个 WebM 的 SHA-256。
 
 ---
 

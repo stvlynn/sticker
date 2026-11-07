@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Download, Copy, Check } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Download, Copy, Check, Send } from 'lucide-react'
 import Image from 'next/image'
 import type { Sticker } from '@/data/stickers'
+import { AnimatedStickerPreview } from './AnimatedStickerPreview'
 
 interface StickerCardProps {
   sticker: Sticker
@@ -13,15 +14,13 @@ interface StickerCardProps {
 export function StickerCard({ sticker }: StickerCardProps) {
   const [isHovered, setIsHovered] = useState(false)
   const [copied, setCopied] = useState(false)
-
-  const handleDownload = async () => {
-    const link = document.createElement('a')
-    link.href = sticker.pngUrl
-    link.download = `${sticker.title}.png`
-    link.click()
-  }
+  const [copyFailed, setCopyFailed] = useState(false)
+  const reducedMotion = useReducedMotion()
+  const downloadUrl = sticker.type === 'animated' ? sticker.videoUrl : sticker.pngUrl
 
   const handleCopy = async () => {
+    if (sticker.type !== 'static') return
+    setCopyFailed(false)
     try {
       const response = await fetch(sticker.pngUrl)
       const blob = await response.blob()
@@ -31,19 +30,20 @@ export function StickerCard({ sticker }: StickerCardProps) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
+      setCopyFailed(true)
       console.error('Failed to copy image:', err)
     }
   }
 
   return (
     <motion.div
-      className="relative flex flex-col items-center justify-center p-6 cursor-pointer"
+      className="group relative flex flex-col items-center justify-center p-6"
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       initial={false}
       animate={{
-        y: isHovered ? -8 : 0,
-        scale: isHovered ? 1.02 : 1,
+        y: isHovered && !reducedMotion ? -8 : 0,
+        scale: isHovered && !reducedMotion ? 1.02 : 1,
       }}
       transition={{
         duration: 0.25,
@@ -55,61 +55,68 @@ export function StickerCard({ sticker }: StickerCardProps) {
           : 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.06))',
       }}
     >
-      {/* Sticker Image */}
       <div className="relative w-full aspect-square flex items-center justify-center">
-        <Image
-          src={sticker.pngUrl}
-          alt={sticker.title}
-          width={160}
-          height={160}
-          className="object-contain"
-          style={{
-            filter: 'drop-shadow(0 0 1px white) drop-shadow(0 0 1px white)',
-          }}
-        />
+        {sticker.type === 'animated' ? (
+          <AnimatedStickerPreview sticker={sticker} />
+        ) : (
+          <Image
+            src={sticker.pngUrl}
+            alt={sticker.title}
+            width={160}
+            height={160}
+            className="object-contain"
+            style={{
+              filter: 'drop-shadow(0 0 1px white) drop-shadow(0 0 1px white)',
+            }}
+          />
+        )}
       </div>
 
-      {/* Title - 使用文件名，hover时隐藏 */}
-      <motion.p
+      <p
         className="mt-3 text-sm font-medium text-foreground text-center"
-        initial={{ opacity: 1 }}
-        animate={{ opacity: isHovered ? 0 : 1 }}
-        transition={{ duration: 0.2 }}
       >
         {sticker.title}
-      </motion.p>
+      </p>
 
-      {/* Hover Actions */}
-      <motion.div
-        className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-4 py-2 border-t border-dashed border-gray-300 bg-background/80"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: isHovered ? 1 : 0 }}
-        transition={{ duration: 0.2 }}
+      <div
+        className="sticker-actions mt-3 flex min-h-9 flex-wrap items-center justify-center gap-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
       >
-        {/* Copy */}
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:bg-gray-200 rounded transition-colors"
-          title="复制到剪贴板"
-        >
-          {copied ? (
-            <Check className="w-3.5 h-3.5 text-green-600" />
-          ) : (
-            <Copy className="w-3.5 h-3.5" />
-          )}
-          {copied ? '已复制' : '复制'}
-        </button>
+        {sticker.type === 'static' ? (
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1 px-2 py-2 text-xs text-gray-600 hover:bg-gray-200 rounded transition-colors focus-visible:outline focus-visible:outline-2"
+            title="复制到剪贴板"
+          >
+            {copied ? (
+              <Check className="w-3.5 h-3.5 text-green-600" />
+            ) : (
+              <Copy className="w-3.5 h-3.5" />
+            )}
+            <span aria-live="polite">{copied ? '已复制' : copyFailed ? '复制失败，请下载' : '复制'}</span>
+          </button>
+        ) : (
+          <a
+            href={sticker.packUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-2 py-2 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors focus-visible:outline focus-visible:outline-2"
+            aria-label={`在 Telegram 添加 ${sticker.title} 所在贴纸包`}
+          >
+            <Send className="w-3.5 h-3.5" />
+            Telegram
+          </a>
+        )}
 
-        {/* Download */}
-        <button
-          onClick={handleDownload}
-          className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:bg-gray-200 rounded transition-colors"
-          title="下载图片"
+        <a
+          href={downloadUrl}
+          download={downloadUrl.split('/').pop()}
+          className="flex items-center gap-1 px-2 py-2 text-xs text-gray-600 hover:bg-gray-200 rounded transition-colors focus-visible:outline focus-visible:outline-2"
+          aria-label={`下载 ${sticker.title} (${sticker.type === 'animated' ? 'WebM' : 'PNG'})`}
         >
           <Download className="w-3.5 h-3.5" />
-          下载
-        </button>
-      </motion.div>
+          {sticker.type === 'animated' ? 'WebM' : '下载'}
+        </a>
+      </div>
     </motion.div>
   )
 }

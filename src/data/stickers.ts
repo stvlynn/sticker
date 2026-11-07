@@ -1,8 +1,24 @@
-export interface Sticker {
+import animatedManifest from './animated-stickers.json'
+
+interface BaseSticker {
   id: string
   title: string
+}
+
+export interface StaticSticker extends BaseSticker {
+  type: 'static'
   pngUrl: string
 }
+
+export interface AnimatedSticker extends BaseSticker {
+  type: 'animated'
+  videoUrl: string
+  posterUrl: string
+  packUrl: string
+}
+
+export type Sticker = StaticSticker | AnimatedSticker
+export type StickerType = Sticker['type']
 
 // 从文件名生成贴纸数据
 const stickerFiles = [
@@ -87,11 +103,23 @@ const stickerFiles = [
   'yandere_knife.png',
 ]
 
-export const stickers: Sticker[] = stickerFiles.map((filename) => {
+export const staticStickers: StaticSticker[] = stickerFiles.map((filename) => {
   const title = filename.replace('.png', '')
   return {
     id: title,
     title,
+    type: 'static',
     pngUrl: `/stickers/${filename}`,
   }
 })
+
+export const animatedStickers: AnimatedSticker[] = animatedManifest.stickers.map((sticker) => ({
+  id: `animated-${sticker.id}`,
+  title: sticker.title,
+  type: 'animated',
+  videoUrl: sticker.videoUrl,
+  posterUrl: sticker.posterUrl,
+  packUrl: animatedManifest.packs[sticker.pack - 1].url,
+}))
+
+export const stickers: Sticker[] = [...staticStickers, ...animatedStickers]
