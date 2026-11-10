@@ -25,7 +25,7 @@ when the moment fits — without putting the sticker catalog or any image into m
 The package is published to npm as `dsh-lynn-sticker`:
 
 ```text
-plugin_manager install_bundle target=dsh-lynn-sticker@1.1.0
+plugin_manager install_bundle target=dsh-lynn-sticker@1.2.0
 ```
 
 Or install the local bundle directory (from this checkout):
@@ -87,7 +87,7 @@ needs no package change at all.
 
 ```bash
 npm run stickers:build   # canonical catalog + public/catalog.json + MCP stills + lib/catalog.json
-npm run stickers:pack    # dist/dsh-lynn-sticker-1.1.0.tgz
+npm run stickers:pack    # dist/dsh-lynn-sticker-1.2.0.tgz
 ```
 
 The packaging script fails if any sticker media is bundled or if the catalog references a
