@@ -8,6 +8,7 @@
  * deployed `catalog.json` after activation when the site is reachable.
  */
 import { readFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -18,19 +19,19 @@ const CATALOG_TTL_MS = resolveTtl(process.env.LYNN_STICKER_CATALOG_TTL_MS)
 const MAX_PER_TURN = 1
 
 export const name = 'lynn-sticker'
-export const inject = ['tools', 'systemPrompt', 'sessionProjections']
+export const inject = ['tools', 'systemPrompt']
 
 const GUIDANCE = [
-  'Lynn stickers: when the user\'s moment is emotional or playful (thanks, greeting, celebration, frustration, a funny failure, a break), you may call `send_sticker` once with a short mood phrase.',
-  'When several stickers fit, prefer an animated sticker.',
-  'Never let a sticker replace a substantive answer, and skip it for routine or serious tasks.',
+  'Lynn stickers: call `send_sticker` when a human moment clearly fits — a greeting, thanks, celebration after finishing something, frustration after a failure, a funny accident, or a break.',
+  'After substantive tool work, a task hook may note that a tool just finished; decide for yourself whether this is a natural stopping point for a sticker.',
+  'When several stickers fit, prefer an animated sticker. At most one per turn; never let a sticker replace a substantive answer, and skip routine or serious tasks.',
 ].join(' ')
 
 const TOOL_DESCRIPTION = [
   'Send one Lynn-chan chat sticker that fits the current mood or scene.',
-  'Use sparingly: at most once per turn, only when it adds warmth or humor, and never as the only response.',
-  'Pass a short Chinese or English mood/scene phrase in `mood`; the best sticker is chosen automatically.',
-  'When several stickers fit, prefer an animated sticker.',
+  'Use it at clear human moments: greeting, thanks, celebration after completing something, frustration after a failure, a funny accident, or a break; after substantive tool work, decide whether the task is at a natural stopping point.',
+  'Use sparingly: at most once per turn, only when it adds warmth or humor, and never as the only response; skip routine or serious tasks.',
+  'Pass a short Chinese or English mood/scene phrase in `mood`; the best sticker is chosen automatically, preferring animated stickers when several fit.',
   'An optional `id` from a previous result selects an exact sticker.',
 ].join(' ')
 
@@ -89,13 +90,11 @@ if (bundledCatalog === null) throw new Error('lynn-sticker: bundled catalog.json
 
 let activeCatalog = bundledCatalog
 let byId = new Map(activeCatalog.stickers.map(sticker => [sticker.id, sticker]))
-let byTitle = new Map(activeCatalog.stickers.map(sticker => [sticker.title, sticker]))
 
 function replaceCatalog(next) {
   if (next === null) return
   activeCatalog = next
   byId = new Map(activeCatalog.stickers.map(sticker => [sticker.id, sticker]))
-  byTitle = new Map(activeCatalog.stickers.map(sticker => [sticker.title, sticker]))
 }
 
 /**
@@ -240,173 +239,50 @@ function skipped(reason) {
   return { sent: false, id: '', title: '', type: 'static', reason }
 }
 
-/** Phrases that suppress automatic stickers: refusal or meta/development talk. */
-const AUTO_NEGATIVE = /(不要|别|不用|无需).{0,8}(贴纸|表情包|表情|sticker)|no sticker/i
-const AUTO_TECHNICAL = /(插件|触发|概率|hook|实现机制|提示词|工具调用|列表|硬编码|动态检索)/i
-
-/** User-side intent rules, first match wins. Titles resolve against the active catalog. */
-const AUTO_INTENTS = [
-  { title: '贴贴', terms: ['谢谢', '感谢', '多谢', 'thanks', 'thank you', 'thx'] },
-  { title: 'Greeting 1', terms: ['你好', '您好', '嗨', '哈喽', '早上好', '早安', '晚上好', 'hello', 'hi', 'hey'] },
-  { title: 'Sleep (Normal)', terms: ['晚安', '睡了', '睡觉', '困了', '困死', 'good night'] },
-  { title: 'Eat (Popcorn)', terms: ['干饭', '吃饭', '饿了', '好饿', '外卖', 'food', 'hungry'] },
-  { title: 'coffee_desperate', terms: ['咖啡', 'coffee', '续命'] },
-  { title: 'Work Nap', terms: ['好累', '累死', '累了', '加班', '熬夜', 'deadline', 'ddl', 'tired'] },
-  { title: 'Angry', terms: ['生气', '愤怒', '气死', '火大', '烦死', 'angry', 'mad'] },
-  { title: 'Bug', terms: ['bug', '报错', '错误', 'error'] },
-  { title: 'This Is Fine 1', terms: ['失败', '崩了', '炸了', '挂了', 'failed', 'failure', 'broken'] },
-  { title: 'Question', terms: ['困惑', '不懂', '为什么', '问号', '啥意思', 'confused'] },
-  { title: 'Celebration', terms: ['完成', '搞定', '成功', '上线', '通过', '庆祝', '太好了', '牛逼', 'yay', 'celebrate', 'done', 'success', 'deployed'] },
-  { title: 'Cheer', terms: ['加油', '冲鸭', 'cheer'] },
-  { title: 'Surprise', terms: ['震惊', '卧槽', '吃惊', 'surprise', 'wow'] },
-  { title: 'Cry 1', terms: ['哭', '难过', '伤心', 'cry', 'sad'] },
-  { title: 'Laugh', terms: ['哈哈', '笑死', '想笑', 'laugh', 'lol'] },
-  { title: 'Money', terms: ['工资', '发财', '赚钱', 'money', '亏了'] },
-  { title: 'Luv 1', terms: ['喜欢', '爱你', '贴贴', 'love', 'luv'] },
-  { title: 'Work Nap', terms: ['摸鱼', '偷懒', '划水'] },
-  { title: 'bubble_tea', terms: ['奶茶', 'bubble tea'] },
-  { title: '贴贴', terms: ['表情包', '贴纸', 'sticker'] },
-]
-
-const SUCCESS_TERMS = ['完成', '搞定', '成功', '上线', '通过', '修好', '部署', 'done', 'success', 'deployed', 'fixed', 'passed']
-const FAILURE_TERMS = ['失败', '报错', '错误', '崩了', '炸了', 'failed', 'failure', 'error']
+/** Tools whose result means substantive task work happened. */
 const MUTATION_TOOLS = new Set(['edit', 'write', 'apply_patch', 'bash', 'terminal_open', 'terminal_send', 'terminal_close', 'pwsh'])
-const IDENTITY_SCHEMA = { parse: value => value }
+const nudgedTurns = new Map()
 
-function textOfContent(content) {
-  if (!Array.isArray(content)) return ''
-  return content
-    .map(block => (block !== null && typeof block === 'object' && block.type === 'text' && typeof block.text === 'string' ? block.text : ''))
-    .filter(Boolean)
-    .join(' ')
-    .trim()
-}
+const TASK_NUDGE = [
+  'Task lifecycle hook: a substantive tool just finished. If this is a natural stopping point and a sticker fits the user\'s mood, you may call send_sticker once now; otherwise ignore this note.',
+  'Do not call send_sticker for routine or serious work, and never let it replace a substantive answer.',
+].join(' ')
 
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
-}
-
-function hasTerm(text, terms) {
-  const lower = String(text ?? '').toLowerCase()
-  for (const term of terms) {
-    const needle = term.toLowerCase()
-    if (/^[a-z0-9 ]+$/u.test(needle)) {
-      if (new RegExp(`(^|[^a-z0-9])${escapeRegExp(needle)}([^a-z0-9]|$)`, 'u').test(lower)) return true
-    } else if (lower.includes(needle)) {
-      return true
-    }
-  }
-  return false
-}
-
-function autoStickerMeta(title) {
-  const sticker = byTitle.get(title)
-  if (sticker === undefined) return null
-  return {
-    sent: true,
-    id: sticker.id,
-    title: sticker.title,
-    type: sticker.type,
-    thumb: siteUrl(sticker.image),
-    video: sticker.video === null ? null : siteUrl(sticker.video),
-  }
-}
-
-function newTurnState(turn) {
-  return { turn, userText: '', assistantText: '', toolCalls: 0, mutationCalls: 0, toolErrors: 0, calls: {}, manual: false }
-}
-
-function decideAutoSticker(current) {
-  if (current.manual) return null
-  const userText = current.userText.trim()
-  if (userText === '' || userText.length > 260) return null
-  if (AUTO_NEGATIVE.test(userText) || AUTO_TECHNICAL.test(userText)) return null
-  for (const intent of AUTO_INTENTS) {
-    if (hasTerm(userText, intent.terms)) return autoStickerMeta(intent.title)
-  }
-  const success = hasTerm(current.assistantText, SUCCESS_TERMS)
-  const failure = hasTerm(current.assistantText, FAILURE_TERMS)
-  if (current.mutationCalls > 0 && current.toolErrors === 0 && success) return autoStickerMeta('Celebration')
-  if (current.mutationCalls > 0 && current.toolErrors > 0 && failure) return autoStickerMeta('This Is Fine 1')
-  return null
+function installTaskHook(ctx) {
+  ctx.effect(
+    () =>
+      ctx.on('tools/post-execute', async (exec, result, next) => {
+        const decision = await next()
+        if (decision.kind !== 'accept') return decision
+        if (exec.agent === undefined || !MUTATION_TOOLS.has(exec.name)) return decision
+        const agents = ctx.get('agents')
+        if (agents === undefined) return decision
+        const session = exec.agent.session
+        const turn = agents.turnBoundaryOf(session).lastTurn
+        const key = `${String(session.id)}:${turn}`
+        if (nudgedTurns.has(key)) return decision
+        nudgedTurns.set(key, true)
+        if (nudgedTurns.size > 2000) {
+          for (const oldKey of [...nudgedTurns.keys()].slice(0, 500)) nudgedTurns.delete(oldKey)
+        }
+        const status = result.isError === true ? 'failed' : 'completed'
+        const message = {
+          id: randomUUID(),
+          role: 'user',
+          content: [{ type: 'text', text: `${TASK_NUDGE} (${exec.name} ${status}.)` }],
+          source: { kind: 'lynn-sticker-hook', form: 'notice', summary: 'Sticker moment check' },
+        }
+        return { ...decision, additionalContexts: [...(decision.additionalContexts ?? []), message] }
+      }),
+    'lynn-sticker: task lifecycle hook',
+  )
 }
 
 /**
- * Durable, replayable auto-sticker decision. This is the task-related hook:
- * it folds turn/start, user/message, assistant/message, tool/call and
- * tool/result events and records one sticker per completed turn. The client
- * turnTail reads the wire view by turn number.
- */
-const AUTO_STICKER_PROJECTION = {
-  key: 'lynnStickerAuto',
-  stateSchema: IDENTITY_SCHEMA,
-  viewSchema: IDENTITY_SCHEMA,
-  init: () => ({ byTurn: {}, current: null }),
-  apply(state, event) {
-    const type = event.type
-    const data = event.data ?? {}
-    if (type === 'turn/start') {
-      return { ...state, current: newTurnState(data.turn) }
-    }
-    if (type === 'turn/end' && state.current === null) return state
-    let current = state.current
-    if (current === null) {
-      if (typeof data.turn !== 'number') return state
-      current = newTurnState(data.turn)
-    }
-    if (type === 'user/message') {
-      if (data.source?.kind !== 'user') return state
-      const text = textOfContent(data.content)
-      return text === '' ? state : { ...state, current: { ...current, userText: `${current.userText} ${text}`.trim() } }
-    }
-    if (type === 'assistant/message') {
-      const text = textOfContent(data.message?.content)
-      return text === '' ? state : { ...state, current: { ...current, assistantText: `${current.assistantText} ${text}`.trim() } }
-    }
-    if (type === 'tool/call') {
-      const name = typeof data.name === 'string' ? data.name : ''
-      return {
-        ...state,
-        current: {
-          ...current,
-          toolCalls: current.toolCalls + 1,
-          mutationCalls: current.mutationCalls + (MUTATION_TOOLS.has(name) ? 1 : 0),
-          calls: { ...current.calls, [String(data.callId)]: name },
-          manual: current.manual || name === 'send_sticker',
-        },
-      }
-    }
-    if (type === 'tool/result') {
-      const callId = data.message?.toolCallId
-      const name = callId === undefined ? undefined : current.calls[String(callId)]
-      return {
-        ...state,
-        current: {
-          ...current,
-          toolErrors: current.toolErrors + (data.message?.isError === true ? 1 : 0),
-          manual: current.manual || name === 'send_sticker',
-        },
-      }
-    }
-    if (type === 'turn/end') {
-      if (current.turn !== data.turn) return state
-      return { byTurn: { ...state.byTurn, [String(current.turn)]: decideAutoSticker(current) }, current: null }
-    }
-    return { ...state, current }
-  },
-  wire: {
-    viewSchema: IDENTITY_SCHEMA,
-    view: state => state.byTurn,
-    summary: false,
-  },
-  stateVersion: 1,
-}
-
-/**
- * Register the sticker tool, prompt hint, auto-sticker projection and catalog refresh.
+ * Register the sticker tool, prompt hint, task lifecycle hook and catalog refresh.
  * @param {object} ctx Cordis context
  */
-export async function apply(ctx) {
+export function apply(ctx) {
   const tool = {
     name: 'send_sticker',
     description: TOOL_DESCRIPTION,
@@ -513,7 +389,7 @@ export async function apply(ctx) {
   })
   ctx.effect(() => disposePrompt, 'lynn-sticker: prompt hint')
 
-  await ctx.sessionProjections.register(AUTO_STICKER_PROJECTION)
+  installTaskHook(ctx)
 
   disposed = false
   ctx.effect(() => () => {

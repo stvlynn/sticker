@@ -120,11 +120,7 @@ window.__ModuleLoader__.load({
      * tool-call group, so it is visible in normal conversation flow.
      */
     function StickerTail(props) {
-      const autoByTurn = props.useProjection('lynnStickerAuto')
-      const manual = props.useChat(snapshot => selectStickerForTurn(snapshot, props.turn))
-      const turnNumber = turnNumberOf(props.turn)
-      const auto = autoByTurn !== null && typeof autoByTurn === 'object' ? autoByTurn[String(turnNumber)] : null
-      const meta = manual ?? auto
+      const meta = props.useChat(snapshot => selectStickerForTurn(snapshot, props.turn))
       if (!meta) return null
       return h(StickerMedia, { meta })
     }

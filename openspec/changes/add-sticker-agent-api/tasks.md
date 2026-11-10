@@ -19,7 +19,7 @@
 - [x] 4.2 Implement `lib/index.js`: `send_sticker` tool, one-line render, absolute site media URLs in presentation meta, prompt hint, per-turn soft limit, background remote catalog refresh.
 - [x] 4.3 Implement `lib/client.js`: `tool.call.toolview` registration and inline still/animated sticker rendering with reduced-motion handling and disposal.
 - [x] 4.4 Implement `scripts/build-catalog.mjs`: metadata-only `lib/catalog.json` (no bundled media) plus `public/catalog.json` for the remote refresh.
-- [x] 4.5 Implement `scripts/package-dsh-plugin.mjs` and produce an installable tarball (~72 KB, no media).
+- [x] 4.5 Implement `scripts/package-dsh-plugin.mjs` and produce an installable tarball (~70 KB, no media).
 
 ## 5. Verification and docs
 - [x] 5.1 Implement `scripts/verify-sticker-stack.mjs` covering catalog, MCP stills, metadata-only plugin, public catalog, live remote media, API, MCP and plugin syntax.
@@ -36,12 +36,12 @@
   all files pass the RIFF/WEBP header check (MCP-only).
 - DSH metadata: `node packages/dsh-sticker/scripts/build-catalog.mjs` → 261 metadata entries,
   119.4 KB, no bundled media; every entry uses site-relative `image`/`video` paths.
-- `node scripts/verify-sticker-stack.mjs` → 73 checks passed, 0 failed, 0 skipped (catalog, shared
+- `node scripts/verify-sticker-stack.mjs` → 69 checks passed, 0 failed, 0 skipped (catalog, shared
   stills, metadata-only bundle, public catalog, REST endpoints, Range, path traversal, MCP stdio,
   HTTP `/mcp`, live `sticker.stv.pm` PNG/WebM and the deployed `/catalog.json`).
 - `npx tsc --noEmit` → pass.
 - `npm run build` → Next 14 production build pass.
-- `npm run stickers:pack` → `dist/dsh-lynn-sticker-1.1.0.tgz`, 72 KB, 10 entries, 261 metadata
+- `npm run stickers:pack` → `dist/dsh-lynn-sticker-1.1.0.tgz`, 70 KB, 10 entries, 261 metadata
   entries, no `lib/assets` and no bundled media.
 - Live DSH: `plugin_manager install_bundle packages/dsh-sticker` → `application: applied`;
   `cordis_inspect_query` confirms the `send_sticker` tool schema, the browser
@@ -55,3 +55,5 @@
   `…/stickers/animated/001-Alert-Bits.webm` → 200 `video/webm`.
 - The old plugin package asset route now returns 404 for `/plugins/dsh-lynn-sticker/assets/...`,
   confirming no media is bundled or served by the plugin.
+- Live task hook: a `bash` result appended one `Task lifecycle hook` context note; the model then
+  chose to call `send_sticker("任务完成，开心")` and got the animated `Dance 1`.

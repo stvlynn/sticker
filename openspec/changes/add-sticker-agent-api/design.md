@@ -275,6 +275,22 @@ export function apply(ctx, config) { ... }
    silent, marks the attempt time, and retries after the next TTL. No media route or static asset
    serving is registered.
 
+### Task lifecycle hook
+
+No keyword-to-sticker table is hardcoded. Instead:
+
+- The tool description and system-prompt hint enumerate the moments where a sticker is appropriate
+  (greeting, thanks, celebration after finishing something, frustration after a failure, a funny
+  accident, a break), say to prefer animated stickers, and cap usage at one per turn.
+- A `tools/post-execute` waterfall listener watches substantive tool results (`edit`, `write`,
+  `apply_patch`, `bash`, terminal). After the first such result in a turn it attaches one small
+  `additionalContexts` notice asking the model to decide whether this is a natural sticker moment;
+  the model chooses whether to call `send_sticker`. The hook never picks a sticker or maps keywords
+  to intents.
+- The notice is emitted at most once per turn, only after mutation-class tools, and only when an
+  owning agent and turn are available. The client turn-tail still renders the model's manual
+  `send_sticker` result; no auto-sticker projection or client rule table is registered.
+
 ### Browser half (`lib/client.js`)
 
 Hand-written external client module in the documented format:
@@ -323,7 +339,7 @@ window.__ModuleLoader__.load({
 - Reads the canonical catalog and writes `lib/catalog.json` with only matching metadata and
   root-relative site paths: `{ id, order, title, type, tags, moods, whenToUse, image, video }`.
 - Bundles **no images or WebM loops**; `package.json` exposes no `./assets/*` export and the
-  tarball is about 72 KB.
+  tarball is about 70 KB.
 - The canonical build also writes `public/catalog.json` so the deployed site can serve it for the
   background refresh.
 - The shared 256px WebP stills under `packages/sticker-catalog/assets/thumbs` remain only for the
