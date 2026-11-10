@@ -18,7 +18,8 @@ them over a stable interface, and cannot play one back into a conversation at a 
   - a model-facing `send_sticker` tool that resolves a short mood phrase server-side,
   - a tiny system-prompt hint and a one-sticker-per-turn soft limit,
   - a browser tool-call view that renders the sticker inline in the transcript,
-  - optimized package assets (WebP stills + small WebM loops) and localized display metadata.
+  - metadata-only packaging: the plugin loads sticker PNG/WebM media from sticker.stv.pm on demand
+    and keeps only a ~120 KB matching catalog, so the npm tarball is about 68 KB.
 - Add a packaging script that produces an installable `dsh-lynn-sticker` tarball.
 - Add an end-to-end verification script and documentation.
 - Do not change existing gallery behaviour; no existing public API is broken.

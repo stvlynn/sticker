@@ -38,16 +38,17 @@ packages/sticker-catalog  ── catalog.json (261 entries, canonical)
         │                     │
         │                     ├── packages/sticker-api   REST :4319
         │                     ├── packages/sticker-mcp   MCP stdio (+ optional HTTP)
-        │                     └── packages/dsh-sticker   DSH bundle
-        │                              ├── lib/catalog.json (runtime lookup)
-        │                              ├── lib/assets/thumbs/*.webp
-        │                              └── lib/assets/anim/*.webm
+        │                     └── packages/dsh-sticker   DSH bundle (metadata only)
+        │                              └── lib/catalog.json (runtime lookup + remote refresh)
         ▼
+public/catalog.json  →  https://sticker.stv.pm/catalog.json
+public/stickers/*     →  https://sticker.stv.pm/stickers/*   (media loaded by the browser)
 scripts/verify-sticker-stack.mjs    scripts/package-dsh-plugin.mjs
 ```
 
-The DSH bundle is self-contained for rendering: it never calls the REST API at runtime. The API
-and MCP server are the external access path for other agents and tools.
+The DSH bundle ships **no sticker media**: the host returns absolute `sticker.stv.pm` URLs in
+`tool/result.meta`, and the browser loads the PNG/WebM on demand. The REST API and MCP server are
+the external access path for other agents and tools.
 
 ## Canonical catalog
 
@@ -171,17 +172,16 @@ name `dsh-lynn-sticker`, row id `lynn-sticker`.
 ### Files
 
 ```
-package.json           exports ".", "./client", "./assets/*", "./locale/*.json", "./icon"
+package.json           exports ".", "./client", "./locale/*.json", "./icon"
 cordis.patch.yml       inserts row { id: lynn-sticker, name: dsh-lynn-sticker }
 icon.png               <=256 KiB, derived from public/stickers/mhy.png (CC BY 4.0)
+LICENSE                CC BY 4.0
 locale/en.json         meta.title / meta.description
 locale/zh.json         meta.title / meta.description
-lib/index.js           host half: catalog load, matcher, tool, prompt hint, media route
+lib/index.js           host half: catalog load/refresh, matcher, tool, prompt hint
 lib/client.js          browser half: window.__ModuleLoader__ factory + tool view
-lib/catalog.json       generated runtime catalog (id/title/type/tags/moods/thumb/video)
-lib/assets/thumbs/*.webp  generated 256px stills for all 261
-lib/assets/anim/*.webm    generated 240px loops for animated stickers
-scripts/build-assets.mjs  regenerates catalog + assets + plugin catalog
+lib/catalog.json       metadata-only runtime catalog (id/title/type/tags/moods/image/video)
+scripts/build-catalog.mjs  regenerates lib/catalog.json (no media)
 README.md              install, usage, license/attribution
 ```
 
@@ -191,17 +191,15 @@ README.md              install, usage, license/attribution
 {
   "name": "dsh-lynn-sticker",
   "version": "1.0.0",
-  "private": true,
   "type": "module",
   "exports": {
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
-    "./assets/*": "./lib/assets/*",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.png",
     "./package.json": "./package.json"
   },
-  "files": ["lib", "cordis.patch.yml", "locale/*.json", "icon.png", "README.md", "scripts"],
+  "files": ["lib", "cordis.patch.yml", "locale/*.json", "icon.png", "README.md", "LICENSE"],
   "dsh": {
     "bundle": { "patch": "./cordis.patch.yml" },
     "client": {
@@ -251,9 +249,10 @@ export function apply(ctx, config) { ... }
    - output schema: `{ sent, id, title, type, reason }` (all required; strings and boolean).
    - `render`: sent → `[{ type:'text', text: 'Sent sticker "<title>".' }]`; skipped →
      `[{ type:'text', text: 'Sticker skipped: <reason>.' }]`. Keep both one line.
-   - `presentationMeta`: sent → `{ id, title, type, thumb, video, sent: true }` where `thumb` is
-     `plugins/dsh-lynn-sticker/assets/<thumb>` and `video` is `/lynn-sticker-media/<file>` only
-     when the media route registered (animated only); skipped → `{ sent: false }`.
+   - `presentationMeta`: sent → `{ id, title, type, thumb, video, sent: true }` where `thumb`
+     and `video` are absolute URLs built from `LYNN_STICKER_BASE_URL` (default
+     `https://sticker.stv.pm`) plus the catalog's root-relative `image`/`video` paths; skipped →
+     `{ sent: false }`. No media is bundled or served by the Host.
    - `execute`: resolve exact id first, else `matchSticker`. If no match, throw an Error whose
      message lists up to 4 `id — title` candidates. Enforce at most one successful send per
      current turn via `ctx.get('agents')?.turnBoundaryOf(exec.agent.session).lastTurn`; on the
@@ -268,10 +267,10 @@ export function apply(ctx, config) { ... }
    celebration, frustration, a funny failure, a break), you may call send_sticker with a short
    mood phrase. At most one per turn; never let a sticker replace a substantive answer, and skip
    it for routine or serious tasks.`
-4. If `webServer` is available (`ctx.inject(['webServer'], cb)`), register prefix
-   `/lynn-sticker-media` that serves only `/^[a-z0-9-]+\.webm$/` from `lib/assets/anim` with
-   `video/webm`, correct `content-length`, immutable cache. 404 on anything else, 405 on
-   non-GET/HEAD. No path traversal is possible; validate the joined path stays inside the dir.
+4. Refresh metadata in the background after activation: fetch
+   `${LYNN_STICKER_BASE_URL}/catalog.json`, validate it, and swap the active catalog + id map when
+   valid. The bundled `lib/catalog.json` is the offline fallback. Failure is silent and never
+   blocks activation or a tool call. No media route or static asset serving is registered.
 
 ### Browser half (`lib/client.js`)
 
@@ -302,8 +301,8 @@ window.__ModuleLoader__.load({
     muted playsInline poster={thumb}>` instead, with the still as fallback on error.
   - No text chrome, no caption, no extra imports of Harness Client packages.
   - Respect reduced motion with `matchMedia('(prefers-reduced-motion: reduce)')`.
-- The asset URLs are absolute document-relative (`plugins/...`), so no runtime fetch or session
-  read is needed.
+- The media URLs in `meta` are absolute `https://sticker.stv.pm/...` URLs, so the browser
+  loads them directly and the client needs no catalog fetch or session read.
 
 ### Context budget
 
@@ -312,18 +311,16 @@ window.__ModuleLoader__.load({
   tokens), no images in model context.
 - Failed match diagnostics are capped at 4 candidates.
 
-### Asset pipeline (`scripts/build-assets.mjs`)
+### Metadata pipeline (`scripts/build-catalog.mjs`)
 
-- Uses `cwebp`/`ffmpeg` when present, else Python Pillow (available) for stills; animated loops
-  are optional but expected.
-- Stills: fit inside 256x256, WebP quality 80, transparent background preserved, file name
-  `<id>-<sha1-8>.webp`.
-- Animated: scale to width 240, VP9/`libvpx-vp9`, `-b:v 0 -crf 40 -an`, 20 fps, file name
-  `<id>-<sha1-8>.webm`; if a conversion fails, log and fall back to the still (catalog `video`
-  null). Total asset budget target < 20 MB; fail the build if exceeded.
-- Writes `lib/catalog.json` with `{ version, stickers: [{ id,title,type,tags,moods,whenToUse,
-  thumb,video }] }`; paths are relative to `lib/assets`.
-- Prints counts and byte totals.
+- Reads the canonical catalog and writes `lib/catalog.json` with only matching metadata and
+  root-relative site paths: `{ id, order, title, type, tags, moods, whenToUse, image, video }`.
+- Bundles **no images or WebM loops**; `package.json` exposes no `./assets/*` export and the
+  tarball is about 68 KB.
+- The canonical build also writes `public/catalog.json` so the deployed site can serve it for the
+  background refresh.
+- The shared 256px WebP stills under `packages/sticker-catalog/assets/thumbs` remain only for the
+  MCP server's image result.
 
 ### Packaging (`scripts/package-dsh-plugin.mjs`)
 
@@ -338,9 +335,10 @@ window.__ModuleLoader__.load({
 
 1. Catalog: 80 static + 181 animated = 261, unique ids/titles/images, every source exists, every
    entry has >=2 tags and >=1 mood, every URL starts with `/`.
-2. DSH assets: catalog count 261, every thumb exists and is non-empty, every animated has a
-   video or an explicit still fallback, total size < 20 MB; `node --check lib/index.js` and
-   `lib/client.js`.
+2. DSH bundle: metadata count 261, every `image`/`video` path is site-relative, no `lib/assets`
+   directory or `./assets/*` export, runtime files < 1 MB; `public/catalog.json` exists and
+   matches the canonical ids; `node --check lib/index.js` and `lib/client.js`; live media URLs on
+   `sticker.stv.pm` are reachable. The remote `/catalog.json` check is SKIP until deployed.
 3. API: start on an ephemeral port, assert `/health`, search `摸鱼`, `type=animated`, lookup,
    tag list, random, original PNG/WebM bytes and 404/path traversal rejection.
 4. MCP: spawn stdio server, send `initialize`, `tools/list`, `tools/call search_stickers`,
@@ -351,9 +349,11 @@ window.__ModuleLoader__.load({
 
 - Hand-written MCP protocol may lag newer SDK revisions → negotiate supported legacy versions
   and verify with the installed DSH MCP client; keep the wire format minimal.
-- Generated binary assets add repo weight (~10–20 MB) → keep WebP/WebM optimized and the total
-  budget enforced.
+- Remote media depends on sticker.stv.pm availability → the site already serves every original
+  asset; images/WebM are loaded only for the one rendered sticker, and the plugin remains tiny.
+- Remote catalog refresh requires deploying `public/catalog.json` → the bundled metadata is the
+  fallback, so a missing endpoint does not break the tool.
 - The tool view renders inside the tool-call row, not as a message bubble → acceptable inline
   chat presentation; no custom session event type and no context cost.
-- pnpm-linked local bundle reads its own repo files → package assets are committed/generated
-  before install; the tarball is the portable artifact.
+- pnpm-linked local bundle reads its own `lib/catalog.json`; the npm tarball is the portable
+  artifact and still bundles no media.

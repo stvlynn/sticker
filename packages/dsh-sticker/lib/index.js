@@ -1,24 +1,19 @@
 /**
  * Host half of the Lynn sticker DeepSeek Harness bundle.
  *
- * Registers one model-facing tool (`send_sticker`), one short prompt hint, and
- * an optional media route for animated WebM loops. The tool result carries a
- * tiny model-facing line; the sticker itself travels through `tool/result.meta`
- * and is rendered by the browser half, so no image or catalog enters model
- * context.
+ * Registers one model-facing tool (`send_sticker`) and one short prompt hint.
+ * The package intentionally ships NO sticker media: `tool/result.meta` carries
+ * absolute sticker.stv.pm URLs, and the browser half renders those URLs inline.
+ * Only the compact matching metadata is bundled, and it is refreshed from the
+ * deployed `catalog.json` after activation when the site is reachable.
  */
-import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs'
-import { dirname, join, resolve, sep } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const catalog = JSON.parse(readFileSync(join(here, 'catalog.json'), 'utf8'))
-const stickers = catalog.stickers.map((sticker, index) => ({ ...sticker, order: sticker.order ?? index }))
-const byId = new Map(stickers.map(sticker => [sticker.id, sticker]))
-const assetsDir = join(here, 'assets')
-const animDir = join(assetsDir, 'anim')
-const PACKAGE_NAME = 'dsh-lynn-sticker'
-const MEDIA_PREFIX = '/lynn-sticker-media'
+const DEFAULT_SITE_BASE = 'https://sticker.stv.pm'
+const SITE_BASE = normalizeBase(process.env.LYNN_STICKER_BASE_URL)
 const MAX_PER_TURN = 1
 
 export const name = 'lynn-sticker'
@@ -40,6 +35,92 @@ const TOOL_DESCRIPTION = [
 const sentTurns = new Map()
 
 const SEPARATORS = /[\s,，。.!！?？、/|:：;；()（）[\]【】"'“”‘’]+/gu
+
+function normalizeBase(value) {
+  const raw = String(value ?? '').trim()
+  return (raw === '' ? DEFAULT_SITE_BASE : raw).replace(/\/+$/u, '')
+}
+
+/** Resolve one site-relative sticker path to an absolute https URL. */
+function siteUrl(path) {
+  try {
+    return new URL(path, `${SITE_BASE}/`).href
+  } catch {
+    return path
+  }
+}
+
+/** Validate and normalize either the bundled or the remotely fetched catalog. */
+function normalizeCatalog(payload) {
+  if (payload === null || typeof payload !== 'object' || !Array.isArray(payload.stickers)) return null
+  const rows = []
+  for (const [index, sticker] of payload.stickers.entries()) {
+    if (sticker === null || typeof sticker !== 'object') continue
+    const { id, title, type, image } = sticker
+    if (typeof id !== 'string' || id === '') continue
+    if (typeof title !== 'string' || title === '') continue
+    if (type !== 'static' && type !== 'animated') continue
+    if (typeof image !== 'string' || !image.startsWith('/')) continue
+    const video = typeof sticker.video === 'string' && sticker.video.startsWith('/') ? sticker.video : null
+    const rawTags = Array.isArray(sticker.tags) ? sticker.tags : []
+    const rawMoods = Array.isArray(sticker.moods) ? sticker.moods : []
+    const tags = [...new Set(rawTags.filter(tag => typeof tag === 'string' && tag !== ''))]
+    const moods = [...new Set([...rawMoods.filter(mood => typeof mood === 'string' && mood !== ''), ...tags])]
+    rows.push({
+      id,
+      order: Number.isFinite(sticker.order) ? sticker.order : index,
+      title,
+      type,
+      tags: tags.length > 0 ? tags : [title],
+      moods: moods.length > 0 ? moods : [title],
+      whenToUse: typeof sticker.whenToUse === 'string' ? sticker.whenToUse : '',
+      image,
+      video,
+    })
+  }
+  return rows.length > 0 ? { stickers: rows } : null
+}
+
+const bundledCatalog = normalizeCatalog(JSON.parse(readFileSync(join(here, 'catalog.json'), 'utf8')))
+if (bundledCatalog === null) throw new Error('lynn-sticker: bundled catalog.json is invalid')
+
+let activeCatalog = bundledCatalog
+let byId = new Map(activeCatalog.stickers.map(sticker => [sticker.id, sticker]))
+
+function replaceCatalog(next) {
+  if (next === null) return
+  activeCatalog = next
+  byId = new Map(activeCatalog.stickers.map(sticker => [sticker.id, sticker]))
+}
+
+/**
+ * Refresh the matching metadata from the deployed site in the background. The
+ * bundled catalog is the offline fallback; failure is silent.
+ */
+function startCatalogRefresh(ctx) {
+  if (typeof fetch !== 'function') return
+  ctx.effect(() => {
+    let disposed = false
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 3500)
+    fetch(`${SITE_BASE}/catalog.json`, {
+      signal: controller.signal,
+      headers: { accept: 'application/json' },
+    })
+      .then(response => (response.ok ? response.json() : null))
+      .then(payload => {
+        if (disposed) return
+        replaceCatalog(normalizeCatalog(payload))
+      })
+      .catch(() => {})
+      .finally(() => clearTimeout(timer))
+    return () => {
+      disposed = true
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, 'lynn-sticker: remote catalog refresh')
+}
 
 function normalizeText(value) {
   return String(value ?? '')
@@ -111,7 +192,7 @@ function scoreSticker(sticker, query) {
 }
 
 function matchSticker(query) {
-  const ranked = stickers
+  const ranked = activeCatalog.stickers
     .map(sticker => ({ sticker, score: scoreSticker(sticker, query) }))
     .filter(row => row.score > 0)
     .sort((a, b) => b.score - a.score || a.sticker.order - b.sticker.order)
@@ -129,104 +210,8 @@ function skipped(reason) {
   return { sent: false, id: '', title: '', type: 'static', reason }
 }
 
-function mediaUrl(sticker) {
-  if (sticker.video === null) return null
-  return `${MEDIA_PREFIX}/${sticker.video.replace(/^anim\//u, '')}`
-}
-
-function mediaHeaders(contentLength) {
-  return {
-    'content-type': 'video/webm',
-    'content-length': String(contentLength),
-    'cache-control': 'public, max-age=31536000, immutable',
-    'accept-ranges': 'bytes',
-    'x-content-type-options': 'nosniff',
-    'access-control-allow-origin': '*',
-  }
-}
-
-/** Serve one generated animated loop with byte-range support. */
-function createMediaHandler() {
-  return (req, res) => {
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
-      res.writeHead(405, { allow: 'GET, HEAD', 'access-control-allow-origin': '*' })
-      res.end()
-      return
-    }
-    let pathname
-    try {
-      pathname = new URL(String(req.url ?? '/'), 'http://localhost').pathname
-    } catch {
-      res.writeHead(400)
-      res.end()
-      return
-    }
-    const name = pathname.slice(MEDIA_PREFIX.length).replace(/^\//u, '')
-    if (!/^[a-z0-9-]+\.webm$/u.test(name)) {
-      res.writeHead(404, { 'access-control-allow-origin': '*' })
-      res.end()
-      return
-    }
-    const file = resolve(animDir, name)
-    if (!file.startsWith(`${animDir}${sep}`) || !existsSync(file)) {
-      res.writeHead(404, { 'access-control-allow-origin': '*' })
-      res.end()
-      return
-    }
-    const stats = statSync(file)
-    if (!stats.isFile()) {
-      res.writeHead(404, { 'access-control-allow-origin': '*' })
-      res.end()
-      return
-    }
-    const rangeHeader = req.headers.range
-    const range = typeof rangeHeader === 'string' ? /^bytes=(\d*)-(\d*)$/u.exec(rangeHeader.trim()) : null
-    if (range !== null) {
-      const startText = range[1]
-      const endText = range[2]
-      let start
-      let end
-      if (startText === '') {
-        const suffix = Number(endText)
-        if (!Number.isFinite(suffix) || suffix <= 0) {
-          res.writeHead(416, { 'content-range': `bytes */${stats.size}` })
-          res.end()
-          return
-        }
-        start = Math.max(0, stats.size - suffix)
-        end = stats.size - 1
-      } else {
-        start = Number(startText)
-        end = endText === '' ? stats.size - 1 : Number(endText)
-      }
-      if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || start >= stats.size || end < start) {
-        res.writeHead(416, { 'content-range': `bytes */${stats.size}` })
-        res.end()
-        return
-      }
-      end = Math.min(end, stats.size - 1)
-      res.writeHead(206, {
-        ...mediaHeaders(end - start + 1),
-        'content-range': `bytes ${start}-${end}/${stats.size}`,
-      })
-      if (req.method === 'HEAD') {
-        res.end()
-        return
-      }
-      createReadStream(file, { start, end }).pipe(res)
-      return
-    }
-    res.writeHead(200, mediaHeaders(stats.size))
-    if (req.method === 'HEAD') {
-      res.end()
-      return
-    }
-    createReadStream(file).pipe(res)
-  }
-}
-
 /**
- * Register the sticker tool, prompt hint, and media route.
+ * Register the sticker tool and prompt hint.
  * @param {object} ctx Cordis context
  */
 export function apply(ctx) {
@@ -278,8 +263,8 @@ export function apply(ctx) {
           id: sticker.id,
           title: sticker.title,
           type: sticker.type,
-          thumb: `plugins/${PACKAGE_NAME}/assets/${sticker.thumb}`,
-          video: mediaUrl(sticker),
+          thumb: siteUrl(sticker.image),
+          video: sticker.video === null ? null : siteUrl(sticker.video),
         }
       },
     },
@@ -335,15 +320,5 @@ export function apply(ctx) {
   })
   ctx.effect(() => disposePrompt, 'lynn-sticker: prompt hint')
 
-  ctx.inject(['webServer'], webCtx => {
-    webCtx.effect(
-      () =>
-        webCtx.webServer.register({
-          kind: 'prefix',
-          path: MEDIA_PREFIX,
-          handler: createMediaHandler(),
-        }),
-      'lynn-sticker: animated media route',
-    )
-  })
+  startCatalogRefresh(ctx)
 }

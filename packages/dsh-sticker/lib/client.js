@@ -3,14 +3,14 @@
  *
  * Registers one keyed tool view for the `send_sticker` tool. The host persists
  * only a tiny `meta` payload on `tool/result`; this view turns that payload into
- * an inline sticker and never fetches the catalog or reads session state.
+ * an inline sticker. Media is loaded on demand from sticker.stv.pm; the plugin
+ * package bundles no sticker images or loops.
  */
 window.__ModuleLoader__.load({
   id: 'dsh-lynn-sticker',
   factory(require) {
     const React = require('react')
     const h = React.createElement
-    const PACKAGE_NAME = 'dsh-lynn-sticker'
     const CSS = `
       .dsh-lynn-sticker { display: flex; align-items: flex-start; padding: 2px 0 4px; }
       .dsh-lynn-sticker__media {
@@ -53,7 +53,7 @@ window.__ModuleLoader__.load({
       if (!block || block.isError === true) return null
       const meta = block.meta
       if (!meta || meta.sent !== true || typeof meta.thumb !== 'string') return null
-      const thumb = meta.thumb.startsWith('plugins/') ? meta.thumb : `plugins/${PACKAGE_NAME}/assets/${meta.thumb}`
+      const thumb = meta.thumb
       const title = typeof meta.title === 'string' && meta.title !== '' ? meta.title : 'Lynn sticker'
       const useVideo = typeof meta.video === 'string' && meta.video !== '' && !reduced && !videoFailed
       if (useVideo) {

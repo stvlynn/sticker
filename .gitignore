@@ -37,8 +37,6 @@ coverage/
 
 # Generated sticker artifacts (npm run stickers:build)
 packages/sticker-catalog/assets/
-packages/dsh-sticker/lib/assets/
-packages/dsh-sticker/lib/catalog.json
 
 # Packaged plugin tarballs
 dist/

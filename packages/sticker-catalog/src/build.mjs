@@ -20,6 +20,7 @@ const staticDir = join(repo, 'public/stickers')
 const animatedDir = join(staticDir, 'animated')
 const manifestPath = join(repo, 'src/data/animated-stickers.json')
 const outputPath = join(repo, 'packages/sticker-catalog/catalog.json')
+const publicOutputPath = join(repo, 'public/catalog.json')
 
 const fail = message => {
   console.error(`catalog: ${message}`)
@@ -168,8 +169,9 @@ const catalog = {
 }
 
 writeFileSync(outputPath, `${JSON.stringify(catalog, null, 2)}\n`, 'utf8')
+writeFileSync(publicOutputPath, `${JSON.stringify(catalog, null, 2)}\n`, 'utf8')
 console.log(
-  `catalog: wrote ${stickers.length} stickers (${staticCount} static, ${animatedCount} animated) -> ${relative(outputPath)}`,
+  `catalog: wrote ${stickers.length} stickers (${staticCount} static, ${animatedCount} animated) -> ${relative(outputPath)} and public/catalog.json`,
 )
 
 function relative(path) {

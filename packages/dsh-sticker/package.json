@@ -1,7 +1,7 @@
 {
   "name": "dsh-lynn-sticker",
   "version": "1.0.0",
-  "description": "DeepSeek Harness bundle that lets agents send Lynn-chan stickers inline in conversation with minimal model context cost.",
+  "description": "DeepSeek Harness bundle that lets agents send Lynn-chan stickers inline, loading the media from sticker.stv.pm with minimal model context cost.",
   "type": "module",
   "license": "CC-BY-4.0",
   "author": "Steven Lynn (https://x.com/Stv_Lynn)",
@@ -29,7 +29,6 @@
   "exports": {
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
-    "./assets/*": "./lib/assets/*",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.png",
     "./package.json": "./package.json"

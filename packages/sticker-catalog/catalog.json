@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-10T07:30:16.012Z",
+  "generatedAt": "2026-11-10T07:52:26.796Z",
   "source": {
     "static": "public/stickers/*.png",
     "animated": "src/data/animated-stickers.json"

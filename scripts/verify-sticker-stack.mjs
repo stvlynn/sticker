@@ -6,7 +6,6 @@
  * API, the MCP stdio server, and the HTTP /mcp endpoint. Prints PASS lines and
  * exits non-zero on the first failed group.
  */
-import { createRequire } from 'node:module'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -22,6 +21,7 @@ const dshCatalogPath = join(dshDir, 'lib/catalog.json')
 
 let passed = 0
 let failed = 0
+let skipped = 0
 const failures = []
 
 function check(condition, message) {
@@ -108,17 +108,19 @@ checkGroup('shared stills', () => {
 // ── DSH bundle ────────────────────────────────────────────────────────────
 checkGroup('dsh bundle', () => {
   assert(existsSync(dshCatalogPath), 'dsh runtime catalog missing; run npm run stickers:build')
-  for (const file of ['lib/index.js', 'lib/client.js', 'cordis.patch.yml', 'icon.png', 'locale/en.json', 'locale/zh.json', 'package.json']) {
+  for (const file of ['lib/index.js', 'lib/client.js', 'cordis.patch.yml', 'icon.png', 'locale/en.json', 'locale/zh.json', 'package.json', 'LICENSE']) {
     check(existsSync(join(dshDir, file)), `dsh bundle contains ${file}`)
   }
-  for (const file of ['lib/index.js', 'lib/client.js', 'scripts/build-assets.mjs']) {
+  for (const file of ['lib/index.js', 'lib/client.js', 'scripts/build-catalog.mjs']) {
     const result = spawnSync('node', ['--check', join(dshDir, file)], { encoding: 'utf8' })
     check(result.status === 0, `node --check ${file}`)
   }
   const manifest = JSON.parse(readFileSync(join(dshDir, 'package.json'), 'utf8'))
   check(manifest.dsh?.bundle?.patch === './cordis.patch.yml', 'package.json declares dsh.bundle.patch')
   check(manifest.dsh?.client?.platform === 'web', 'package.json declares dsh.client.platform=web')
-  check(manifest.exports?.['./assets/*'] === './lib/assets/*', 'package.json exports ./assets/*')
+  check(manifest.exports?.['./assets/*'] === undefined, 'package.json bundles no media assets')
+  check(Array.isArray(manifest.files) && !manifest.files.some(file => file.includes('assets')), 'package files exclude media assets')
+  check(!existsSync(join(dshDir, 'lib/assets')), 'plugin package contains no lib/assets directory')
   check(statSync(join(dshDir, 'icon.png')).size <= 256 * 1024, 'icon is <= 256 KiB')
   for (const locale of ['en', 'zh']) {
     const data = JSON.parse(readFileSync(join(dshDir, 'locale', `${locale}.json`), 'utf8'))
@@ -127,35 +129,28 @@ checkGroup('dsh bundle', () => {
 
   const runtime = JSON.parse(readFileSync(dshCatalogPath, 'utf8'))
   check(runtime.stickers.length === 261, `dsh runtime catalog has 261 entries (got ${runtime.stickers.length})`)
-  let missing = 0
-  let invalidThumbs = 0
+  let invalidPaths = 0
   let videoCount = 0
   for (const sticker of runtime.stickers) {
-    const thumb = join(dshDir, 'lib/assets', sticker.thumb)
-    if (!existsSync(thumb)) missing++
-    else if (!validWebp(thumb)) invalidThumbs++
-    if (sticker.video !== null) {
-      videoCount++
-      if (!existsSync(join(dshDir, 'lib/assets', sticker.video))) missing++
-    }
+    if (typeof sticker.image !== 'string' || !sticker.image.startsWith('/')) invalidPaths++
+    if (sticker.video !== null && (typeof sticker.video !== 'string' || !sticker.video.startsWith('/'))) invalidPaths++
+    if (sticker.video !== null) videoCount++
+    if ('thumb' in sticker) invalidPaths++
   }
-  check(missing === 0, `every referenced DSH asset exists (${missing} missing)`)
-  check(invalidThumbs === 0, `every DSH still is a real WebP file (${invalidThumbs} invalid)`)
-  check(videoCount === 181, `all 181 animated stickers have a WebM loop (got ${videoCount})`)
-  const assetsSize = totalSize(join(dshDir, 'lib/assets'))
-  check(assetsSize <= 20 * 1024 * 1024, `DSH asset budget <= 20 MB (${(assetsSize / 1024 / 1024).toFixed(2)} MB)`)
+  check(invalidPaths === 0, `every runtime entry uses site-relative image/video paths only (${invalidPaths} invalid)`)
+  check(videoCount === 181, `all 181 animated stickers have a remote WebM path (got ${videoCount})`)
+  const libSize = totalSize(join(dshDir, 'lib'))
+  check(libSize <= 1024 * 1024, `plugin runtime files stay <= 1 MB without media (${(libSize / 1024).toFixed(0)} KB)`)
 
-  // The client-module asset route resolves package assets through this export map.
-  const requireFromPackage = createRequire(join(dshDir, 'package.json'))
-  const sample = runtime.stickers.find(sticker => sticker.type === 'static')
-  const assetPath = `dsh-lynn-sticker/assets/${sample.thumb}`
-  let resolved = ''
-  try {
-    resolved = requireFromPackage.resolve(assetPath)
-  } catch (error) {
-    throw new Error(`package asset export does not resolve ${assetPath}: ${error.message}`)
+  const publicCatalogPath = join(repo, 'public/catalog.json')
+  check(existsSync(publicCatalogPath), 'public/catalog.json exists for remote catalog refresh')
+  if (existsSync(publicCatalogPath)) {
+    const publicCatalog = JSON.parse(readFileSync(publicCatalogPath, 'utf8'))
+    const canonical = JSON.parse(readFileSync(catalogPath, 'utf8'))
+    const ids = new Set(canonical.stickers.map(sticker => sticker.id))
+    check(publicCatalog.stickers.length === 261, `public/catalog.json has 261 entries (got ${publicCatalog.stickers.length})`)
+    check(publicCatalog.stickers.every(sticker => ids.has(sticker.id)), 'public/catalog.json ids match the canonical catalog')
   }
-  check(resolved === join(dshDir, 'lib/assets', sample.thumb), 'package asset route resolves a still through ./assets/*')
 })
 
 // ── API + HTTP MCP ────────────────────────────────────────────────────────
@@ -347,6 +342,37 @@ async function testMcpStdio() {
   }
 }
 
+// ── Remote media / catalog (deployment-dependent; skipped when unreachable) ─
+async function testRemoteMedia() {
+  const base = (process.env.LYNN_STICKER_BASE_URL || 'https://sticker.stv.pm').replace(/\/+$/u, '')
+  const media = [
+    `${base}/stickers/${encodeURIComponent('摸鱼.png')}`,
+    `${base}/stickers/animated/001-Alert-Bits.webm`,
+  ]
+  for (const url of media) {
+    try {
+      const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(10000) })
+      check(response.ok, `remote media reachable: ${url} (${response.status})`)
+    } catch (error) {
+      skipped++
+      console.log(`SKIP remote media (${error instanceof Error ? error.message : String(error)}): ${url}`)
+    }
+  }
+  try {
+    const response = await fetch(`${base}/catalog.json`, { signal: AbortSignal.timeout(10000) })
+    if (!response.ok) {
+      skipped++
+      console.log(`SKIP remote catalog (${response.status}): ${base}/catalog.json; deploy public/catalog.json to enable it`)
+      return
+    }
+    const payload = await response.json()
+    check(payload.stickers?.length === 261, `remote /catalog.json serves 261 entries (got ${payload.stickers?.length})`)
+  } catch (error) {
+    skipped++
+    console.log(`SKIP remote catalog (${error instanceof Error ? error.message : String(error)}): ${base}/catalog.json`)
+  }
+}
+
 // ── Run async suites ──────────────────────────────────────────────────────
 try {
   await testApi()
@@ -357,6 +383,14 @@ try {
 }
 
 try {
+  await testRemoteMedia()
+} catch (error) {
+  failed++
+  failures.push(`remote media: ${error instanceof Error ? error.message : String(error)}`)
+  console.error(`FAIL remote media: ${error instanceof Error ? error.stack ?? error.message : String(error)}`)
+}
+
+try {
   await testMcpStdio()
 } catch (error) {
   failed++
@@ -364,7 +398,7 @@ try {
   console.error(`FAIL MCP stdio: ${error instanceof Error ? error.stack ?? error.message : String(error)}`)
 }
 
-console.log(`\n${failed === 0 ? 'PASS' : 'FAIL'}: ${passed} checks passed, ${failed} failed`)
+console.log(`\n${failed === 0 ? 'PASS' : 'FAIL'}: ${passed} checks passed, ${failed} failed, ${skipped} skipped`)
 if (failed > 0) {
   console.error(`Failures:\n${failures.map(failure => `  - ${failure}`).join('\n')}`)
   process.exit(1)

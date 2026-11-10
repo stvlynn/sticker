@@ -19,6 +19,7 @@ packages/dsh-sticker-mcp-bundle      optional DSH MCP connection bundle (not ins
 
 scripts/verify-sticker-stack.mjs     end-to-end verification
 scripts/package-dsh-plugin.mjs       plugin tarball builder
+public/catalog.json                  deployed metadata for the plugin's remote refresh
 ```
 
 ## Build everything
@@ -30,15 +31,15 @@ npm run stickers:build
 This runs three steps:
 
 1. `packages/sticker-catalog/src/build.mjs` — regenerates `catalog.json` (261 entries: 80 static,
-   181 animated) from the actual assets and the hand-curated mood metadata.
+   181 animated) from the actual assets and the hand-curated mood metadata, and writes the same
+   document to `public/catalog.json` for the plugin's remote refresh.
 2. `packages/sticker-catalog/src/build-assets.mjs` — creates 256px WebP stills for all 261
    stickers under `packages/sticker-catalog/assets/thumbs/` for the MCP server.
-3. `packages/dsh-sticker/scripts/build-assets.mjs` — copies the stills and encodes 240px WebM
-   loops for the 181 animated stickers under `packages/dsh-sticker/lib/assets/`, then writes the
-   bundle's runtime `lib/catalog.json`.
+3. `packages/dsh-sticker/scripts/build-catalog.mjs` — writes the DSH bundle's metadata-only
+   `lib/catalog.json` (id/title/type/tags/moods/site paths). It bundles no media.
 
-Prerequisites: Node.js 24+, `cwebp` (`brew install webp`) and `ffmpeg`. The build fails rather
-than silently shipping missing stickers.
+Prerequisites: Node.js 24+ and `cwebp` (`brew install webp`) for the MCP stills. `ffmpeg` is no
+longer needed by the DSH plugin.
 
 ## Canonical catalog
 
@@ -119,21 +120,39 @@ to every request, so the direct sticker bundle is the context-cheap path for DSH
 
 ## DeepSeek Harness bundle
 
-Install from the repository:
+Install from npm or from the local directory through the Plugin Manager:
 
-```bash
-npm run stickers:build
-# then install the local directory through the Plugin Manager
-# target: /Users/steven/code/sticker/packages/dsh-sticker
+```text
+plugin_manager install_bundle target=dsh-lynn-sticker@1.0.0
+# or
+plugin_manager install_bundle target=/Users/steven/code/sticker/packages/dsh-sticker
 ```
+
+The package is intentionally tiny (~68 KB tarball): it ships only the host/client code, the
+metadata catalog, icon, locales and LICENSE. **No sticker images or WebM loops are packaged.**
 
 The bundle registers:
 
 - `send_sticker({ mood, id? })` — resolves the best sticker server-side. A mood phrase is enough;
   `id` selects an exact sticker from a previous result.
 - A one-paragraph prompt hint asking the model to use stickers sparingly (at most one per turn).
-- A browser `tool.call.toolview` that renders the sticker inline from `tool/result.meta`.
-- An optional `/lynn-sticker-media/<file>.webm` route for animated loops with byte-range support.
+- A browser `tool.call.toolview` that renders the sticker inline from `tool/result.meta`, loading
+  the image/WebM directly from `https://sticker.stv.pm`.
+
+### Remote media and catalog
+
+The host builds absolute URLs from `LYNN_STICKER_BASE_URL` (default `https://sticker.stv.pm`):
+
+- static: `https://sticker.stv.pm/stickers/<name>.png`
+- animated: poster `…/stickers/animated/<name>.png`, loop `…/stickers/animated/<name>.webm`
+
+After activation it fetches `${LYNN_STICKER_BASE_URL}/catalog.json` in the background and replaces
+the bundled metadata when the response is valid. The bundled `lib/catalog.json` is the offline
+fallback. Updating images on the site needs no plugin release; updating `public/catalog.json` makes
+new or retagged stickers available without a plugin release.
+
+The current production site already serves every sticker asset. Enabling remote catalog refresh
+requires deploying the new `public/catalog.json` once.
 
 ### Context cost
 
@@ -142,7 +161,7 @@ The bundle registers:
 | Tool schema + description | ~150 tokens |
 | Prompt hint | ~70 tokens |
 | One send result | ~15 tokens |
-| Sticker image / catalog | 0 tokens (never sent to the model) |
+| Sticker image / video / catalog metadata | 0 tokens (not sent to the model) |
 
 A second send in the same turn returns `Sticker skipped: already sent a sticker this turn.` and
 renders nothing.
@@ -154,8 +173,9 @@ npm run stickers:pack
 # dist/dsh-lynn-sticker-1.0.0.tgz
 ```
 
-The packaging script verifies the tarball contains both halves, the manifests, the runtime catalog,
-the icon, locales, and every generated still/animated loop referenced by the catalog.
+The packaging script fails if the tarball bundles any sticker media or references a non-site
+relative path. The result is about 68 KB and contains both halves, the manifests, the metadata
+catalog, the icon, locales and LICENSE.
 
 ## Verification
 
@@ -163,12 +183,13 @@ the icon, locales, and every generated still/animated loop referenced by the cat
 npm run stickers:verify
 ```
 
-It checks the catalog counts and metadata, all generated WebP/WebM assets, the DSH manifest and
-package-asset export, the REST endpoints (including Range and path traversal), the MCP stdio
-handshake and image result, and HTTP `/mcp`.
+It checks the catalog counts and metadata, the shared MCP stills, the metadata-only DSH package
+(no `lib/assets`), `public/catalog.json`, live media URLs on `sticker.stv.pm`, the REST endpoints
+(including Range and path traversal), the MCP stdio handshake and image result, and HTTP `/mcp`.
+The remote `/catalog.json` check is reported as SKIP until the site is redeployed with that file.
 
 ## License
 
-Sticker artwork: **CC BY 4.0**, by Steven Lynn and contributors; commercial use is not permitted.
-The plugin icon is derived from `public/stickers/mhy.png`. See the repository
+Sticker artwork: **CC BY 4.0**, by Steven Lynn and contributors; keep the attribution when
+redistributing. The plugin icon is derived from `public/stickers/mhy.png`. See the repository
 [README](../README.md) and [LICENSE](../LICENSE).

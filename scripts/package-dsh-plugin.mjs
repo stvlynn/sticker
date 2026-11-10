@@ -3,7 +3,7 @@
  * Pack the DSH sticker bundle into an installable tarball and verify that the
  * tarball really contains the runtime files and every referenced asset.
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -60,32 +60,25 @@ const required = [
   'package/icon.png',
   'package/locale/en.json',
   'package/locale/zh.json',
+  'package/LICENSE',
 ]
 const missing = required.filter(entry => !entries.has(entry))
+const bundledAssets = [...entries].filter(entry => entry.startsWith('package/lib/assets/'))
 
-const missingAssets = []
-for (const sticker of runtime.stickers) {
-  if (!entries.has(`package/lib/assets/${sticker.thumb}`)) missingAssets.push(sticker.thumb)
-  if (sticker.video !== null && !entries.has(`package/lib/assets/${sticker.video}`)) missingAssets.push(sticker.video)
+if (missing.length > 0) {
+  console.error(`pack: tarball incomplete; missing files: ${missing.join(', ')}`)
+  process.exit(1)
 }
-
-if (missing.length > 0 || missingAssets.length > 0) {
-  console.error(`pack: tarball incomplete; missing files: ${[...missing, ...missingAssets.slice(0, 8)].join(', ')}${missingAssets.length > 8 ? ` (+${missingAssets.length - 8} more)` : ''}`)
+if (bundledAssets.length > 0) {
+  console.error(`pack: tarball unexpectedly bundles ${bundledAssets.length} sticker media file(s); media must load from sticker.stv.pm`)
+  process.exit(1)
+}
+if (!runtime.stickers.every(sticker => typeof sticker.image === 'string' && sticker.image.startsWith('/'))) {
+  console.error('pack: catalog entries must reference site-relative media paths')
   process.exit(1)
 }
 
 const bytes = statSync(tarball).size
-const generated = totalSize(join(packageDir, 'lib/assets'))
 console.log(
-  `pack: ${tarball} (${(bytes / 1024 / 1024).toFixed(2)} MB tarball, ${(generated / 1024 / 1024).toFixed(2)} MB assets, ${runtime.stickers.length} stickers, ${entries.size} entries)`,
+  `pack: ${tarball} (${(bytes / 1024).toFixed(0)} KB tarball, no bundled sticker media, ${runtime.stickers.length} metadata entries, ${entries.size} files)`,
 )
-
-function totalSize(directory) {
-  let total = 0
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    const full = join(directory, entry.name)
-    if (entry.isDirectory()) total += totalSize(full)
-    else if (entry.isFile()) total += statSync(full).size
-  }
-  return total
-}
