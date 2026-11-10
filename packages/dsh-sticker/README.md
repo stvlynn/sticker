@@ -67,11 +67,13 @@ The host half builds absolute media URLs from a configurable base URL (default
 
 Set `LYNN_STICKER_BASE_URL` in the DSH environment to point at a different deployment.
 
-After activation the host also fetches `${LYNN_STICKER_BASE_URL}/catalog.json` in the background
-and swaps in the refreshed metadata if it is valid. The bundled `lib/catalog.json` is the offline
-fallback, so stickers keep working if the site is unreachable. Updating the deployed
-`public/catalog.json` therefore makes **new or retagged stickers** available without republishing
-the npm package; updating sticker images on the site needs no package change at all.
+The host also fetches `${LYNN_STICKER_BASE_URL}/catalog.json` in the background and swaps in the
+refreshed metadata if it is valid. Refreshes are TTL-based: at activation and on a tool call when
+the cached list is older than **5 minutes** (override with `LYNN_STICKER_CATALOG_TTL_MS`). The
+bundled `lib/catalog.json` is the offline fallback, so stickers keep working if the site is
+unreachable. Updating the deployed `public/catalog.json` therefore makes **new or retagged
+stickers** available without republishing the npm package; updating sticker images on the site
+needs no package change at all.
 
 ## Build and package (repository development)
 

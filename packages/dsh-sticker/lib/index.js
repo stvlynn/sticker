@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url'
 const here = dirname(fileURLToPath(import.meta.url))
 const DEFAULT_SITE_BASE = 'https://sticker.stv.pm'
 const SITE_BASE = normalizeBase(process.env.LYNN_STICKER_BASE_URL)
+const CATALOG_TTL_MS = resolveTtl(process.env.LYNN_STICKER_CATALOG_TTL_MS)
 const MAX_PER_TURN = 1
 
 export const name = 'lynn-sticker'
@@ -97,29 +98,50 @@ function replaceCatalog(next) {
  * Refresh the matching metadata from the deployed site in the background. The
  * bundled catalog is the offline fallback; failure is silent.
  */
-function startCatalogRefresh(ctx) {
-  if (typeof fetch !== 'function') return
-  ctx.effect(() => {
-    let disposed = false
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 3500)
-    fetch(`${SITE_BASE}/catalog.json`, {
-      signal: controller.signal,
-      headers: { accept: 'application/json' },
+/** Resolve a positive TTL with a sane floor and ceiling. */
+function resolveTtl(value) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed <= 0) return 5 * 60 * 1000
+  return Math.max(1000, Math.min(parsed, 24 * 60 * 60 * 1000))
+}
+
+let disposed = false
+let refreshInFlight = false
+let refreshController = null
+let lastRefreshAt = 0
+
+/**
+ * Refresh the metadata catalog at most once per TTL. The request runs in the
+ * background; a failure is silent and retried after the next TTL window.
+ */
+function refreshCatalog() {
+  if (disposed || refreshInFlight || typeof fetch !== 'function') return
+  refreshInFlight = true
+  const controller = new AbortController()
+  refreshController = controller
+  const timer = setTimeout(() => controller.abort(), 3500)
+  fetch(`${SITE_BASE}/catalog.json`, {
+    signal: controller.signal,
+    headers: { accept: 'application/json' },
+  })
+    .then(response => (response.ok ? response.json() : null))
+    .then(payload => {
+      if (!disposed) replaceCatalog(normalizeCatalog(payload))
     })
-      .then(response => (response.ok ? response.json() : null))
-      .then(payload => {
-        if (disposed) return
-        replaceCatalog(normalizeCatalog(payload))
-      })
-      .catch(() => {})
-      .finally(() => clearTimeout(timer))
-    return () => {
-      disposed = true
+    .catch(() => {})
+    .finally(() => {
       clearTimeout(timer)
-      controller.abort()
-    }
-  }, 'lynn-sticker: remote catalog refresh')
+      lastRefreshAt = Date.now()
+      refreshInFlight = false
+      if (refreshController === controller) refreshController = null
+    })
+}
+
+/** Trigger a background refresh when the cached metadata is older than TTL. */
+function maybeRefreshCatalog() {
+  if (disposed || refreshInFlight) return
+  if (lastRefreshAt !== 0 && Date.now() - lastRefreshAt < CATALOG_TTL_MS) return
+  refreshCatalog()
 }
 
 function normalizeText(value) {
@@ -269,6 +291,7 @@ export function apply(ctx) {
       },
     },
     async execute(args, exec) {
+      maybeRefreshCatalog()
       const raw = args !== null && typeof args === 'object' ? args : {}
       let sticker = null
       if (typeof raw.id === 'string' && raw.id.trim() !== '') {
@@ -320,5 +343,10 @@ export function apply(ctx) {
   })
   ctx.effect(() => disposePrompt, 'lynn-sticker: prompt hint')
 
-  startCatalogRefresh(ctx)
+  disposed = false
+  ctx.effect(() => () => {
+    disposed = true
+    refreshController?.abort()
+  }, 'lynn-sticker: catalog refresh cleanup')
+  maybeRefreshCatalog()
 }

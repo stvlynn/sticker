@@ -146,13 +146,15 @@ The host builds absolute URLs from `LYNN_STICKER_BASE_URL` (default `https://sti
 - static: `https://sticker.stv.pm/stickers/<name>.png`
 - animated: poster `…/stickers/animated/<name>.png`, loop `…/stickers/animated/<name>.webm`
 
-After activation it fetches `${LYNN_STICKER_BASE_URL}/catalog.json` in the background and replaces
-the bundled metadata when the response is valid. The bundled `lib/catalog.json` is the offline
-fallback. Updating images on the site needs no plugin release; updating `public/catalog.json` makes
-new or retagged stickers available without a plugin release.
+It fetches `${LYNN_STICKER_BASE_URL}/catalog.json` in the background at activation and on a tool
+call when the cached metadata is older than the TTL (default **5 minutes**, override with
+`LYNN_STICKER_CATALOG_TTL_MS`), replacing the bundled metadata when the response is valid. The
+bundled `lib/catalog.json` is the offline fallback. Updating images on the site needs no plugin
+release; updating `public/catalog.json` makes new or retagged stickers available without a plugin
+release.
 
-The current production site already serves every sticker asset. Enabling remote catalog refresh
-requires deploying the new `public/catalog.json` once.
+The production site serves every sticker asset and `/catalog.json` (261 entries), so the TTL
+refresh is live.
 
 ### Context cost
 
@@ -186,7 +188,7 @@ npm run stickers:verify
 It checks the catalog counts and metadata, the shared MCP stills, the metadata-only DSH package
 (no `lib/assets`), `public/catalog.json`, live media URLs on `sticker.stv.pm`, the REST endpoints
 (including Range and path traversal), the MCP stdio handshake and image result, and HTTP `/mcp`.
-The remote `/catalog.json` check is reported as SKIP until the site is redeployed with that file.
+`/catalog.json` is live on the production site and checked by the verification suite.
 
 ## License
 

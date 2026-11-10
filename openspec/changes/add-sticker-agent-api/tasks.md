@@ -36,9 +36,9 @@
   all files pass the RIFF/WEBP header check (MCP-only).
 - DSH metadata: `node packages/dsh-sticker/scripts/build-catalog.mjs` → 261 metadata entries,
   119.4 KB, no bundled media; every entry uses site-relative `image`/`video` paths.
-- `node scripts/verify-sticker-stack.mjs` → 59 checks passed, 0 failed, 1 skipped (catalog, shared
+- `node scripts/verify-sticker-stack.mjs` → 60 checks passed, 0 failed, 0 skipped (catalog, shared
   stills, metadata-only bundle, public catalog, REST endpoints, Range, path traversal, MCP stdio,
-  HTTP `/mcp`, live `sticker.stv.pm` PNG/WebM; remote `/catalog.json` is SKIP until deploy).
+  HTTP `/mcp`, live `sticker.stv.pm` PNG/WebM and the deployed `/catalog.json`).
 - `npx tsc --noEmit` → pass.
 - `npm run build` → Next 14 production build pass.
 - `npm run stickers:pack` → `dist/dsh-lynn-sticker-1.0.0.tgz`, 68 KB, 10 entries, 261 metadata
@@ -48,6 +48,8 @@
   `tool.call.toolview` occupant; a live call returned `Sent sticker "干饭".` with
   `meta.thumb = https://sticker.stv.pm/stickers/%E5%B9%B2%E9%A5%AD.png` and no image in
   model-facing content.
+- Remote catalog refresh uses a 5-minute TTL (at activation and on tool calls, configurable via
+  `LYNN_STICKER_CATALOG_TTL_MS`); the bundled metadata remains the offline fallback.
 - Remote media verified live: `sticker.stv.pm/stickers/干饭.png` → 200 `image/png`;
   `…/stickers/animated/001-Alert-Bits.webm` → 200 `video/webm`.
 - The old plugin package asset route now returns 404 for `/plugins/dsh-lynn-sticker/assets/...`,

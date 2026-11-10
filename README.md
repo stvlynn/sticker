@@ -112,9 +112,9 @@ npm run stickers:pack    # 打包 dsh-lynn-sticker 插件
 ```
 
 插件安装：在 Plugin Manager 中添加本地 bundle 目录 `/absolute/path/to/packages/dsh-sticker`，
-或发布后安装 npm 包。网站需要重新部署一次以提供 `/catalog.json`（用于插件后台刷新元数据）；
-贴纸图片和 WebM 已经在线，无需为插件发布重新打包。MCP 客户端配置示例和上下文开销说明见
-[docs/sticker-agent-stack.md](docs/sticker-agent-stack.md)。
+或发布后安装 npm 包。`sticker.stv.pm` 已提供 `/catalog.json`，插件会按 TTL（默认 5 分钟）
+在后台刷新贴纸元数据；贴纸图片和 WebM 也直接按需从站点加载。MCP 客户端配置示例和上下文开销
+说明见 [docs/sticker-agent-stack.md](docs/sticker-agent-stack.md)。
 
 ## 协议
 

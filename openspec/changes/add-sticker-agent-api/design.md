@@ -267,10 +267,12 @@ export function apply(ctx, config) { ... }
    celebration, frustration, a funny failure, a break), you may call send_sticker with a short
    mood phrase. At most one per turn; never let a sticker replace a substantive answer, and skip
    it for routine or serious tasks.`
-4. Refresh metadata in the background after activation: fetch
-   `${LYNN_STICKER_BASE_URL}/catalog.json`, validate it, and swap the active catalog + id map when
-   valid. The bundled `lib/catalog.json` is the offline fallback. Failure is silent and never
-   blocks activation or a tool call. No media route or static asset serving is registered.
+4. Refresh metadata in the background with a TTL: fetch
+   `${LYNN_STICKER_BASE_URL}/catalog.json` at activation and on a tool call when the cached list is
+   older than `LYNN_STICKER_CATALOG_TTL_MS` (default 5 minutes), validate it, and swap the active
+   catalog + id map when valid. The bundled `lib/catalog.json` is the offline fallback. Failure is
+   silent, marks the attempt time, and retries after the next TTL. No media route or static asset
+   serving is registered.
 
 ### Browser half (`lib/client.js`)
 
