@@ -293,7 +293,11 @@ window.__ModuleLoader__.load({
   on dispose (`ctx.effect`). Use only `--dsw-alias-*` theme tokens for any chrome; the sticker's
   own artwork carries its colors.
 - `ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({ name:
-  'tool.call.toolview', key: 'send_sticker' }, StickerView))`.
+  'tool.call.toolview', key: 'send_sticker' }, StickerView))` for the trajectory.
+- `ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({ name:
+  'conversation.chat.turnTail', id: 'lynn-sticker-turn-tail', order: 10 }, StickerTail))`: select
+  the last successful `send_sticker` tool result in that completed turn from the chat snapshot and
+  render it below the assistant reply, outside the collapsible tool-call group.
 - `StickerView`:
   - `phase === 'preparing' | 'start'` → render `null` (no flicker before the result).
   - `phase === 'result'`: if `block.isError` or `!block.meta` or `block.meta.sent !== true` →

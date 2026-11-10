@@ -36,16 +36,17 @@
   all files pass the RIFF/WEBP header check (MCP-only).
 - DSH metadata: `node packages/dsh-sticker/scripts/build-catalog.mjs` → 261 metadata entries,
   119.4 KB, no bundled media; every entry uses site-relative `image`/`video` paths.
-- `node scripts/verify-sticker-stack.mjs` → 60 checks passed, 0 failed, 0 skipped (catalog, shared
+- `node scripts/verify-sticker-stack.mjs` → 61 checks passed, 0 failed, 0 skipped (catalog, shared
   stills, metadata-only bundle, public catalog, REST endpoints, Range, path traversal, MCP stdio,
   HTTP `/mcp`, live `sticker.stv.pm` PNG/WebM and the deployed `/catalog.json`).
 - `npx tsc --noEmit` → pass.
 - `npm run build` → Next 14 production build pass.
-- `npm run stickers:pack` → `dist/dsh-lynn-sticker-1.0.0.tgz`, 68 KB, 10 entries, 261 metadata
+- `npm run stickers:pack` → `dist/dsh-lynn-sticker-1.1.0.tgz`, 68 KB, 10 entries, 261 metadata
   entries, no `lib/assets` and no bundled media.
 - Live DSH: `plugin_manager install_bundle packages/dsh-sticker` → `application: applied`;
-  `cordis_inspect_query` confirms the `send_sticker` tool schema and the browser
-  `tool.call.toolview` occupant; a live call returned `Sent sticker "干饭".` with
+  `cordis_inspect_query` confirms the `send_sticker` tool schema, the browser
+  `tool.call.toolview` occupant and the `lynn-sticker-turn-tail` entry in
+  `conversation.chat.turnTail`; a live call returned `Sent sticker "干饭".` with
   `meta.thumb = https://sticker.stv.pm/stickers/%E5%B9%B2%E9%A5%AD.png` and no image in
   model-facing content.
 - Remote catalog refresh uses a 5-minute TTL (at activation and on tool calls, configurable via

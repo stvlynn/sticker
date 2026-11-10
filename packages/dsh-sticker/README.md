@@ -6,8 +6,10 @@ when the moment fits — without putting the sticker catalog or any image into m
 - One compact model tool: `send_sticker({ mood, id? })`.
 - One short system-prompt hint, about 55 words.
 - One-line tool results (`Sent sticker "摸鱼".`), no images or base64 in model context.
-- A browser tool view loads the sticker on demand from **https://sticker.stv.pm**; animated
-  stickers play the site's WebM and fall back to the poster under reduced motion.
+- The sticker is rendered at the **end of the completed turn** through
+  `conversation.chat.turnTail`, so it is visible in normal conversation flow without expanding the
+  collapsed tool-call group. The browser loads the media on demand from **https://sticker.stv.pm**;
+  animated stickers play the site's WebM and fall back to the poster under reduced motion.
 - The npm package bundles **no sticker media** — only the compact matching metadata
   (`lib/catalog.json`, ~120 KB) and the host/client code. The published tarball is ~68 KB.
 - A soft limit of one sticker per assistant turn.
@@ -17,7 +19,7 @@ when the moment fits — without putting the sticker catalog or any image into m
 The package is published to npm as `dsh-lynn-sticker`:
 
 ```text
-plugin_manager install_bundle target=dsh-lynn-sticker@1.0.0
+plugin_manager install_bundle target=dsh-lynn-sticker@1.1.0
 ```
 
 Or install the local bundle directory (from this checkout):
@@ -79,7 +81,7 @@ needs no package change at all.
 
 ```bash
 npm run stickers:build   # canonical catalog + public/catalog.json + MCP stills + lib/catalog.json
-npm run stickers:pack    # dist/dsh-lynn-sticker-1.0.0.tgz
+npm run stickers:pack    # dist/dsh-lynn-sticker-1.1.0.tgz
 ```
 
 The packaging script fails if any sticker media is bundled or if the catalog references a

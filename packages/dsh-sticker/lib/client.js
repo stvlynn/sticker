@@ -45,14 +45,9 @@ window.__ModuleLoader__.load({
       return reduced
     }
 
-    function StickerView(props) {
+    function StickerMedia({ meta }) {
       const reduced = useReducedMotion()
       const [videoFailed, setVideoFailed] = React.useState(false)
-      if (props.phase !== 'result') return null
-      const block = props.block
-      if (!block || block.isError === true) return null
-      const meta = block.meta
-      if (!meta || meta.sent !== true || typeof meta.thumb !== 'string') return null
       const thumb = meta.thumb
       const title = typeof meta.title === 'string' && meta.title !== '' ? meta.title : 'Lynn sticker'
       const useVideo = typeof meta.video === 'string' && meta.video !== '' && !reduced && !videoFailed
@@ -89,6 +84,43 @@ window.__ModuleLoader__.load({
       )
     }
 
+    function StickerView(props) {
+      if (props.phase !== 'result') return null
+      const block = props.block
+      if (!block || block.isError === true) return null
+      const meta = block.meta
+      if (!meta || meta.sent !== true || typeof meta.thumb !== 'string') return null
+      return h(StickerMedia, { meta })
+    }
+
+    /** Find the last successful `send_sticker` result in one completed Turn. */
+    function selectStickerForTurn(snapshot, turn) {
+      const turnNumber = turn !== null && typeof turn === 'object' ? turn.turn : turn
+      const keys = snapshot?.locations?.getTurn?.(turnNumber)
+      if (keys === undefined || keys === null) return null
+      for (let index = keys.length - 1; index >= 0; index--) {
+        const node = snapshot.nodes?.get?.(keys[index])
+        if (!node || node.kind !== 'tool-call') continue
+        const root = node.data?.root
+        if (!root || root.kind !== 'tool-result') continue
+        const name = root.call?.name ?? root.name
+        if (name !== 'send_sticker') continue
+        const meta = root.meta
+        if (meta && meta.sent === true && typeof meta.thumb === 'string') return meta
+      }
+      return null
+    }
+
+    /**
+     * Render the sticker at the completed Turn tail, outside the collapsible
+     * tool-call group, so it is visible in normal conversation flow.
+     */
+    function StickerTail(props) {
+      const meta = props.useChat(snapshot => selectStickerForTurn(snapshot, props.turn))
+      if (!meta) return null
+      return h(StickerMedia, { meta })
+    }
+
     return {
       inject: ['slots'],
       apply(ctx) {
@@ -106,6 +138,16 @@ window.__ModuleLoader__.load({
               key: 'send_sticker',
             },
             StickerView,
+          ),
+        )
+        ctx.slots.inject('conversation.chat.turnTail', () =>
+          ctx.slots.register(
+            {
+              name: 'conversation.chat.turnTail',
+              id: 'lynn-sticker-turn-tail',
+              order: 10,
+            },
+            StickerTail,
           ),
         )
       },

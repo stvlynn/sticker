@@ -115,6 +115,8 @@ checkGroup('dsh bundle', () => {
     const result = spawnSync('node', ['--check', join(dshDir, file)], { encoding: 'utf8' })
     check(result.status === 0, `node --check ${file}`)
   }
+  const clientSource = readFileSync(join(dshDir, 'lib/client.js'), 'utf8')
+  check(clientSource.includes('conversation.chat.turnTail') && clientSource.includes('selectStickerForTurn'), 'client registers a visible turn-tail sticker renderer')
   const manifest = JSON.parse(readFileSync(join(dshDir, 'package.json'), 'utf8'))
   check(manifest.dsh?.bundle?.patch === './cordis.patch.yml', 'package.json declares dsh.bundle.patch')
   check(manifest.dsh?.client?.platform === 'web', 'package.json declares dsh.client.platform=web')

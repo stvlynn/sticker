@@ -123,7 +123,7 @@ to every request, so the direct sticker bundle is the context-cheap path for DSH
 Install from npm or from the local directory through the Plugin Manager:
 
 ```text
-plugin_manager install_bundle target=dsh-lynn-sticker@1.0.0
+plugin_manager install_bundle target=dsh-lynn-sticker@1.1.0
 # or
 plugin_manager install_bundle target=/Users/steven/code/sticker/packages/dsh-sticker
 ```
@@ -136,8 +136,10 @@ The bundle registers:
 - `send_sticker({ mood, id? })` — resolves the best sticker server-side. A mood phrase is enough;
   `id` selects an exact sticker from a previous result.
 - A one-paragraph prompt hint asking the model to use stickers sparingly (at most one per turn).
-- A browser `tool.call.toolview` that renders the sticker inline from `tool/result.meta`, loading
-  the image/WebM directly from `https://sticker.stv.pm`.
+- A browser `tool.call.toolview` for the trajectory, plus a `conversation.chat.turnTail` entry
+  that renders the sticker at the end of the completed turn. The tail placement makes the sticker
+  visible in normal conversation flow without expanding collapsed tool calls, and loads the
+  image/WebM directly from `https://sticker.stv.pm`.
 
 ### Remote media and catalog
 
@@ -172,7 +174,7 @@ renders nothing.
 
 ```bash
 npm run stickers:pack
-# dist/dsh-lynn-sticker-1.0.0.tgz
+# dist/dsh-lynn-sticker-1.1.0.tgz
 ```
 
 The packaging script fails if the tarball bundles any sticker media or references a non-site
