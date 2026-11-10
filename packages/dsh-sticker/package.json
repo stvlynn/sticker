@@ -1,9 +1,31 @@
 {
   "name": "dsh-lynn-sticker",
   "version": "1.0.0",
-  "private": true,
+  "description": "DeepSeek Harness bundle that lets agents send Lynn-chan stickers inline in conversation with minimal model context cost.",
   "type": "module",
-  "description": "Send Lynn-chan stickers inline in DeepSeek Harness conversations, with minimal model context cost.",
+  "license": "CC-BY-4.0",
+  "author": "Steven Lynn (https://x.com/Stv_Lynn)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stvlynn/sticker.git",
+    "directory": "packages/dsh-sticker"
+  },
+  "homepage": "https://github.com/stvlynn/sticker/tree/main/packages/dsh-sticker",
+  "bugs": {
+    "url": "https://github.com/stvlynn/sticker/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "sticker",
+    "lynn",
+    "agent",
+    "mcp",
+    "chat"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "exports": {
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
@@ -18,7 +40,7 @@
     "locale/*.json",
     "icon.png",
     "README.md",
-    "scripts"
+    "LICENSE"
   ],
   "dsh": {
     "bundle": {
@@ -33,9 +55,7 @@
       ]
     }
   },
-  "scripts": {
-    "assets": "node scripts/build-assets.mjs",
-    "pack": "node ../../scripts/package-dsh-plugin.mjs"
-  },
-  "license": "CC-BY-4.0"
+  "publishConfig": {
+    "access": "public"
+  }
 }

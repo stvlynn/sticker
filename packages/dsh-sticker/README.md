@@ -12,6 +12,9 @@ when the moment fits — without putting the sticker catalog or any image into m
 
 ## Install in this repository profile
 
+The package is published to npm as `dsh-lynn-sticker`, so a DSH profile can also install it with
+`plugin_manager install_bundle target=dsh-lynn-sticker@1.0.0` without this checkout.
+
 From the repository root, build the assets once:
 
 ```bash
@@ -79,11 +82,19 @@ npm run stickers:pack
 The tarball is written to `dist/dsh-lynn-sticker-1.0.0.tgz` and verified to contain the manifests,
 host/client halves, runtime catalog, icon, locales and every referenced asset.
 
+## Install from npm
+
+```text
+plugin_manager install_bundle target=dsh-lynn-sticker@1.0.0
+```
+
+The npm tarball is self-contained: it includes the host and client halves, the runtime catalog,
+the icon, locales and every generated still/WebM loop.
+
 ## License and attribution
 
-Sticker artwork is licensed under **CC BY 4.0** by Steven Lynn (<https://x.com/Stv_Lynn>) and
-contributors; commercial use is not permitted. The plugin icon is derived from
-`public/stickers/mhy.png`. The plugin code is provided for use with this repository under the same
-CC BY 4.0 terms as the repository.
+Sticker artwork and the plugin icon are licensed under **CC BY 4.0** by Steven Lynn
+(<https://x.com/Stv_Lynn>) and contributors; keep the attribution when redistributing. The plugin
+icon is derived from `public/stickers/mhy.png`. See [LICENSE](LICENSE).
 
-See the repository root [README](../../README.md) and [LICENSE](../../LICENSE).
+See also the repository root [README](../../README.md) and [LICENSE](../../LICENSE).
