@@ -36,7 +36,7 @@
   all files pass the RIFF/WEBP header check (MCP-only).
 - DSH metadata: `node packages/dsh-sticker/scripts/build-catalog.mjs` → 261 metadata entries,
   119.4 KB, no bundled media; every entry uses site-relative `image`/`video` paths.
-- `node scripts/verify-sticker-stack.mjs` → 69 checks passed, 0 failed, 0 skipped (catalog, shared
+- `node scripts/verify-sticker-stack.mjs` → 71 checks passed, 0 failed, 0 skipped (catalog, shared
   stills, metadata-only bundle, public catalog, REST endpoints, Range, path traversal, MCP stdio,
   HTTP `/mcp`, live `sticker.stv.pm` PNG/WebM and the deployed `/catalog.json`).
 - `npx tsc --noEmit` → pass.

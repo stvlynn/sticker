@@ -101,7 +101,7 @@
 - **REST / MCP**：`npm run stickers:api` 启动本地 API（含 `/mcp`），`npm run stickers:mcp` 启动 MCP stdio 服务。
 - **DeepSeek Harness 插件**：安装 `packages/dsh-sticker` 后，agent 可以在合适的时候调用
   `send_sticker`，贴纸直接显示在对话里；匹配时优先选择动态贴纸。模型会根据提示词中的适用时机主动选择；任务相关的
-  `tools/post-execute` hook 会在修改类工具结束后提示模型自行决定是否发一张贴纸。
+  `agent/turn-stopping` hook 会在 ReAct 循环结束、且本轮有实质工具工作时，提示模型自行决定是否发一张贴纸。
   插件本身只有约 70 KB，不打包任何贴纸图片/WebM；
   图片和动态图按需从 `https://sticker.stv.pm` 加载。贴纸媒体和完整 catalog 都不会进入模型上下文。
 

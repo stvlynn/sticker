@@ -14,11 +14,12 @@ when the moment fits — without putting the sticker catalog or any image into m
 - The npm package bundles **no sticker media** — only the compact matching metadata
   (`lib/catalog.json`, ~120 KB) and the host/client code. The published tarball is ~70 KB.
 - A soft limit of one sticker per assistant turn.
-- Task lifecycle hook: after a substantive tool result (`edit`, `write`, `apply_patch`, `bash`,
-  terminal), the host appends one short context note asking the model to decide whether this is a
-  natural sticker moment. The model chooses; the host does not hardcode intent rules or pick a
-  sticker. The expanded tool description and prompt hint spell out the moments where a sticker is
-  appropriate (greeting, thanks, celebration, frustration, a funny failure, a break).
+- Task lifecycle hook: at the end of the ReAct loop (`agent/turn-stopping`), if the turn had
+  substantive tool work (`edit`, `write`, `apply_patch`, `bash`, terminal), the host steers one
+  short note asking the model to decide whether this is a natural sticker moment. The model
+  chooses; the host does not hardcode intent rules or pick a sticker. The expanded tool description
+  and prompt hint spell out the moments where a sticker is appropriate (greeting, thanks,
+  celebration, frustration, a funny failure, a break).
 
 ## Install
 

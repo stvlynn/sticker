@@ -282,11 +282,12 @@ No keyword-to-sticker table is hardcoded. Instead:
 - The tool description and system-prompt hint enumerate the moments where a sticker is appropriate
   (greeting, thanks, celebration after finishing something, frustration after a failure, a funny
   accident, a break), say to prefer animated stickers, and cap usage at one per turn.
-- A `tools/post-execute` waterfall listener watches substantive tool results (`edit`, `write`,
-  `apply_patch`, `bash`, terminal). After the first such result in a turn it attaches one small
-  `additionalContexts` notice asking the model to decide whether this is a natural sticker moment;
-  the model chooses whether to call `send_sticker`. The hook never picks a sticker or maps keywords
-  to intents.
+- A `tools/result` listener marks substantive tool work (`edit`, `write`, `apply_patch`, `bash`,
+  terminal) and manual `send_sticker` results per session turn.
+- An `agent/turn-stopping` listener runs at the end of the ReAct loop. If the turn had
+  substantive tool work and no sticker, it calls `agent.steer(...)` with one small notice asking
+  the model to decide whether this is a natural sticker moment; `agent.steer` continues the same
+  turn for one more decision step. The hook never picks a sticker or maps keywords to intents.
 - The notice is emitted at most once per turn, only after mutation-class tools, and only when an
   owning agent and turn are available. The client turn-tail still renders the model's manual
   `send_sticker` result; no auto-sticker projection or client rule table is registered.

@@ -241,40 +241,55 @@ function skipped(reason) {
 
 /** Tools whose result means substantive task work happened. */
 const MUTATION_TOOLS = new Set(['edit', 'write', 'apply_patch', 'bash', 'terminal_open', 'terminal_send', 'terminal_close', 'pwsh'])
-const nudgedTurns = new Map()
+const taskTurns = new Map()
 
 const TASK_NUDGE = [
-  'Task lifecycle hook: a substantive tool just finished. If this is a natural stopping point and a sticker fits the user\'s mood, you may call send_sticker once now; otherwise ignore this note.',
-  'Do not call send_sticker for routine or serious work, and never let it replace a substantive answer.',
+  'Task lifecycle check at the end of the ReAct loop: substantive tool work happened in this turn.',
+  'If a sticker fits the user\'s mood and this is a natural stopping point, call send_sticker once now.',
+  'If not, do not call send_sticker and do not add commentary; end the turn.',
 ].join(' ')
+
+function turnStateFor(agent, turn) {
+  const key = `${String(agent.session.id)}:${turn}`
+  let state = taskTurns.get(key)
+  if (state === undefined) {
+    state = { worked: false, stickered: false, nudged: false }
+    taskTurns.set(key, state)
+    if (taskTurns.size > 2000) {
+      for (const oldKey of [...taskTurns.keys()].slice(0, 500)) taskTurns.delete(oldKey)
+    }
+  }
+  return state
+}
 
 function installTaskHook(ctx) {
   ctx.effect(
     () =>
-      ctx.on('tools/post-execute', async (exec, result, next) => {
-        const decision = await next()
-        if (decision.kind !== 'accept') return decision
-        if (exec.agent === undefined || !MUTATION_TOOLS.has(exec.name)) return decision
+      ctx.on('tools/result', (exec, result) => {
+        if (exec.agent === undefined) return
         const agents = ctx.get('agents')
-        if (agents === undefined) return decision
-        const session = exec.agent.session
-        const turn = agents.turnBoundaryOf(session).lastTurn
-        const key = `${String(session.id)}:${turn}`
-        if (nudgedTurns.has(key)) return decision
-        nudgedTurns.set(key, true)
-        if (nudgedTurns.size > 2000) {
-          for (const oldKey of [...nudgedTurns.keys()].slice(0, 500)) nudgedTurns.delete(oldKey)
-        }
-        const status = result.isError === true ? 'failed' : 'completed'
-        const message = {
+        if (agents === undefined) return
+        const turn = agents.turnBoundaryOf(exec.agent.session).lastTurn
+        const state = turnStateFor(exec.agent, turn)
+        if (exec.name === 'send_sticker') state.stickered = true
+        if (MUTATION_TOOLS.has(exec.name)) state.worked = true
+      }),
+    'lynn-sticker: task result tracking',
+  )
+  ctx.effect(
+    () =>
+      ctx.on('agent/turn-stopping', ({ agent, turn }) => {
+        const state = turnStateFor(agent, turn)
+        if (!state.worked || state.stickered || state.nudged) return
+        state.nudged = true
+        agent.steer({
           id: randomUUID(),
           role: 'user',
-          content: [{ type: 'text', text: `${TASK_NUDGE} (${exec.name} ${status}.)` }],
+          content: [{ type: 'text', text: TASK_NUDGE }],
           source: { kind: 'lynn-sticker-hook', form: 'notice', summary: 'Sticker moment check' },
-        }
-        return { ...decision, additionalContexts: [...(decision.additionalContexts ?? []), message] }
+        })
       }),
-    'lynn-sticker: task lifecycle hook',
+    'lynn-sticker: ReAct end hook',
   )
 }
 

@@ -149,10 +149,12 @@ The plugin does not hardcode a keyword-to-sticker decision table. Instead:
   greetings, thanks, celebration after finishing something, frustration after a failure, a funny
   accident, a break, and similar human moments. They also say to prefer animated stickers, use at
   most one per turn, and skip routine or serious work.
-- A `tools/post-execute` hook watches substantive tool results (`edit`, `write`, `apply_patch`,
-  `bash`, terminal). After the first such result in a turn it appends one small context note:
-  "if this is a natural stopping point and a sticker fits the user's mood, you may call
-  send_sticker once; otherwise ignore." The model decides whether to call the tool.
+- An `agent/turn-stopping` hook runs at the end of the ReAct loop, when the turn is about to
+  close. The plugin tracks whether substantive tool work (`edit`, `write`, `apply_patch`, `bash`,
+  terminal) happened and whether the model already sent a sticker. If so, it calls
+  `agent.steer(...)` with one small note: "if this is a natural stopping point and a sticker fits
+  the user's mood, call send_sticker once; otherwise ignore." `agent.steer` continues the same
+  turn for one more decision step.
 - The note is emitted at most once per turn, only after mutation-class tools, and never selects a
   sticker itself. It adds a small amount of context only on task turns, not on every request.
 

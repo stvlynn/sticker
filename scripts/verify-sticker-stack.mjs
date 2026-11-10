@@ -384,28 +384,47 @@ async function testRemoteMedia() {
 
 // ── Task lifecycle hook ────────────────────────────────────────────────────
 async function testTaskHook() {
-  let postExecute
+  let onToolResult
+  let onTurnStopping
   const cleanups = []
   const ctx = {
     effect: fn => { const clean = fn(); if (typeof clean === 'function') cleanups.push(clean); return () => {} },
     tools: { register: () => () => {}, get: () => undefined },
     systemPrompt: { section: () => () => {}, getSectionOrder: () => 0 },
-    on: (event, listener) => { if (event === 'tools/post-execute') postExecute = listener; return () => {} },
+    on: (event, listener) => {
+      if (event === 'tools/result') onToolResult = listener
+      if (event === 'agent/turn-stopping') onTurnStopping = listener
+      return () => {}
+    },
     inject: () => {},
     get: key => (key === 'agents' ? { turnBoundaryOf: () => ({ lastTurn: 1 }) } : undefined),
   }
   await applyStickerHost(ctx)
-  check(typeof postExecute === 'function', 'host registers a tools/post-execute task hook')
-  if (typeof postExecute !== 'function') return
-  const agent = { session: { id: 'verify-session' } }
-  const next = async () => ({ kind: 'accept', content: [] })
-  const first = await postExecute({ name: 'edit', agent }, { isError: false }, next)
-  check(first.additionalContexts?.length === 1, 'task hook appends one reminder after a mutation tool result')
-  check(first.additionalContexts?.[0]?.content?.[0]?.text?.includes('send_sticker'), 'task hook reminder asks the model about send_sticker')
-  const second = await postExecute({ name: 'edit', agent }, { isError: false }, next)
-  check((second.additionalContexts ?? []).length === 0, 'task hook nudges at most once per turn')
-  const unrelated = await postExecute({ name: 'read', agent }, { isError: false }, next)
-  check((unrelated.additionalContexts ?? []).length === 0, 'task hook ignores read-only tools')
+  check(typeof onToolResult === 'function', 'host tracks task tool results')
+  check(typeof onTurnStopping === 'function', 'host registers the ReAct end hook (agent/turn-stopping)')
+  if (typeof onToolResult !== 'function' || typeof onTurnStopping !== 'function') return
+  const makeAgent = id => {
+    const steered = []
+    return { session: { id }, steered, steer: message => steered.push(message) }
+  }
+  const agent = makeAgent('verify-a')
+  onToolResult({ name: 'edit', agent }, { isError: false })
+  onTurnStopping({ agent, turn: 1 })
+  check(agent.steered.length === 1, 'end hook steers once after substantive tool work')
+  check(agent.steered[0]?.content?.[0]?.text?.includes('send_sticker'), 'end hook nudge asks the model about send_sticker')
+  onTurnStopping({ agent, turn: 1 })
+  check(agent.steered.length === 1, 'end hook does not loop the same turn')
+
+  const manual = makeAgent('verify-b')
+  onToolResult({ name: 'edit', agent: manual }, { isError: false })
+  onToolResult({ name: 'send_sticker', agent: manual }, { isError: false })
+  onTurnStopping({ agent: manual, turn: 1 })
+  check(manual.steered.length === 0, 'manual send_sticker suppresses the end-hook nudge')
+
+  const readOnly = makeAgent('verify-c')
+  onToolResult({ name: 'read', agent: readOnly }, { isError: false })
+  onTurnStopping({ agent: readOnly, turn: 1 })
+  check(readOnly.steered.length === 0, 'read-only tools do not trigger the end hook')
   for (const clean of cleanups.reverse()) clean()
 }
 
