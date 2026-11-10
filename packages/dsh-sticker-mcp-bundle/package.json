@@ -1,0 +1,17 @@
+{
+  "name": "dsh-lynn-sticker-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Optional DSH bundle that connects an agent to the local Lynn-chan sticker MCP server over HTTP.",
+  "exports": {
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": ["cordis.patch.yml", "locale/*.json", "icon.svg", "README.md"],
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" }
+  },
+  "license": "CC-BY-4.0"
+}

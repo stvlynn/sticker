@@ -1,0 +1,20 @@
+{
+  "name": "@lynn/sticker-catalog",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Canonical Lynn-chan sticker catalog, matcher and query helpers for agents.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./catalog.json": "./catalog.json",
+    "./match": "./src/match.mjs",
+    "./query": "./src/query.mjs"
+  },
+  "files": ["src", "catalog.json", "assets", "README.md"],
+  "scripts": {
+    "build": "node src/build.mjs",
+    "assets": "node src/build-assets.mjs",
+    "verify": "node src/verify.mjs"
+  },
+  "license": "CC-BY-4.0"
+}

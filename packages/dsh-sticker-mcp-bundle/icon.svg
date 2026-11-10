@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Lynn sticker MCP">
+  <rect width="64" height="64" rx="15" fill="#ffe9ef"/>
+  <path d="M17 12h34a5 5 0 0 1 5 5v24a5 5 0 0 1-5 5H34l-9 8v-8h-8a5 5 0 0 1-5-5V17a5 5 0 0 1 5-5z" fill="#ff8fab"/>
+  <circle cx="26" cy="29" r="3" fill="#4a2330"/>
+  <circle cx="40" cy="29" r="3" fill="#4a2330"/>
+  <path d="M27 36c3 3 7 3 10 0" fill="none" stroke="#4a2330" stroke-width="2.4" stroke-linecap="round"/>
+</svg>

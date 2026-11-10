@@ -93,6 +93,26 @@
 ```
 
 
+## Agent 接入
+
+贴纸库同时提供三种 agent 接入方式，详见 [docs/sticker-agent-stack.md](docs/sticker-agent-stack.md)：
+
+- **Catalog API**：`packages/sticker-catalog/catalog.json`，覆盖 80 张静态贴纸和 181 张动态贴纸。
+- **REST / MCP**：`npm run stickers:api` 启动本地 API（含 `/mcp`），`npm run stickers:mcp` 启动 MCP stdio 服务。
+- **DeepSeek Harness 插件**：安装 `packages/dsh-sticker` 后，agent 可以在合适的时候调用
+  `send_sticker`，贴纸直接显示在对话里；贴纸图片和完整 catalog 都不会进入模型上下文。
+
+```bash
+npm run stickers:build   # 生成 catalog、WebP 静帧和 WebM 循环
+npm run stickers:api     # REST API + MCP HTTP，默认 127.0.0.1:4319
+npm run stickers:mcp     # MCP stdio
+npm run stickers:verify  # 端到端校验
+npm run stickers:pack    # 打包 dsh-lynn-sticker 插件
+```
+
+插件安装：在 Plugin Manager 中添加本地 bundle 目录 `/absolute/path/to/packages/dsh-sticker`。
+MCP 客户端配置示例和上下文开销说明见 [docs/sticker-agent-stack.md](docs/sticker-agent-stack.md)。
+
 ## 协议
 
 本项目中的所有 Sticker 作品采用 **CC BY 4.0** 协议。

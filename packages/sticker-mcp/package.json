@@ -1,0 +1,17 @@
+{
+  "name": "@lynn/sticker-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MCP stdio server for the Lynn-chan sticker catalog.",
+  "type": "module",
+  "exports": {
+    ".": "./server.mjs",
+    "./protocol": "./protocol.mjs"
+  },
+  "files": ["server.mjs", "protocol.mjs", "README.md"],
+  "bin": { "lynn-sticker-mcp": "./server.mjs" },
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "license": "CC-BY-4.0"
+}

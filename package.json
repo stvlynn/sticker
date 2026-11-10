@@ -6,7 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "stickers:catalog": "node packages/sticker-catalog/src/build.mjs",
+    "stickers:thumbs": "node packages/sticker-catalog/src/build-assets.mjs",
+    "stickers:build": "node packages/sticker-catalog/src/build.mjs && node packages/sticker-catalog/src/build-assets.mjs && node packages/dsh-sticker/scripts/build-assets.mjs",
+    "stickers:api": "node packages/sticker-api/server.mjs",
+    "stickers:mcp": "node packages/sticker-mcp/server.mjs",
+    "stickers:verify": "node scripts/verify-sticker-stack.mjs",
+    "stickers:pack": "node scripts/package-dsh-plugin.mjs"
   },
   "dependencies": {
     "next": "^14.2.0",

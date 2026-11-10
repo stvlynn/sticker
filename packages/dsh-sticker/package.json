@@ -1,0 +1,41 @@
+{
+  "name": "dsh-lynn-sticker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Send Lynn-chan stickers inline in DeepSeek Harness conversations, with minimal model context cost.",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./assets/*": "./lib/assets/*",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.png",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.png",
+    "README.md",
+    "scripts"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-tool",
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  },
+  "scripts": {
+    "assets": "node scripts/build-assets.mjs",
+    "pack": "node ../../scripts/package-dsh-plugin.mjs"
+  },
+  "license": "CC-BY-4.0"
+}

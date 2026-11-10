@@ -1,0 +1,13 @@
+{
+  "name": "@lynn/sticker-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "REST API and MCP-over-HTTP endpoint for the Lynn-chan sticker catalog.",
+  "type": "module",
+  "exports": { ".": "./server.mjs" },
+  "files": ["server.mjs", "README.md"],
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "license": "CC-BY-4.0"
+}

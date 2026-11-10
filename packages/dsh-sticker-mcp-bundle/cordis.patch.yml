@@ -1,0 +1,17 @@
+# Optional MCP connection for the Lynn sticker server.
+#
+# Start the local server first:
+#   npm run stickers:api
+#
+# Then install this bundle through the Plugin Manager. It is intentionally NOT
+# installed by default: the direct dsh-lynn-sticker bundle is the context-cheap
+# path for DeepSeek Harness agents. MCP is for other MCP-capable agents, or for
+# a DSH profile that prefers a single shared tool namespace.
+- insert:
+    - id: lynn-sticker-mcp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: lynn_sticker
+        transport: streamable-http
+        url: http://127.0.0.1:4319/mcp
+        failOnStartupError: false
