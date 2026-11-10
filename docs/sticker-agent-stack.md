@@ -123,7 +123,7 @@ to every request, so the direct sticker bundle is the context-cheap path for DSH
 Install from npm or from the local directory through the Plugin Manager:
 
 ```text
-plugin_manager install_bundle target=dsh-lynn-sticker@1.2.0
+plugin_manager install_bundle target=dsh-lynn-sticker@1.2.1
 # or
 plugin_manager install_bundle target=/Users/steven/code/sticker/packages/dsh-sticker
 ```
@@ -196,7 +196,7 @@ renders nothing.
 
 ```bash
 npm run stickers:pack
-# dist/dsh-lynn-sticker-1.2.0.tgz
+# dist/dsh-lynn-sticker-1.2.1.tgz
 ```
 
 The packaging script fails if the tarball bundles any sticker media or references a non-site

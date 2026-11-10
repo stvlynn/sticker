@@ -41,7 +41,7 @@
   HTTP `/mcp`, live `sticker.stv.pm` PNG/WebM and the deployed `/catalog.json`).
 - `npx tsc --noEmit` → pass.
 - `npm run build` → Next 14 production build pass.
-- `npm run stickers:pack` → `dist/dsh-lynn-sticker-1.2.0.tgz`, 70 KB, 10 entries, 261 metadata
+- `npm run stickers:pack` → `dist/dsh-lynn-sticker-1.2.1.tgz`, 70 KB, 10 entries, 261 metadata
   entries, no `lib/assets` and no bundled media.
 - Live DSH: `plugin_manager install_bundle packages/dsh-sticker` → `application: applied`;
   `cordis_inspect_query` confirms the `send_sticker` tool schema, the browser
