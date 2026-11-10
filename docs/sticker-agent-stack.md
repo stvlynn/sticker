@@ -155,8 +155,10 @@ bundled `lib/catalog.json` is the offline fallback. Updating images on the site 
 release; updating `public/catalog.json` makes new or retagged stickers available without a plugin
 release.
 
-The production site serves every sticker asset and `/catalog.json` (261 entries), so the TTL
-refresh is live.
+The matcher scores animated stickers with a small 1.08× bonus, and the tool description plus
+prompt hint tell the model to prefer an animated sticker when several fit; a clearly better static
+sticker still wins (for example `摸鱼` stays the static 摸鱼 sticker). The production site serves
+every sticker asset and `/catalog.json` (261 entries), so the TTL refresh is live.
 
 ### Context cost
 

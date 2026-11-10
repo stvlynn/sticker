@@ -110,7 +110,8 @@ Rules:
 - Normalize query: lowercase, unify punctuation/whitespace, keep CJK.
 - Score `id` exact (1000), title exact (600), title contains (350), alias exact (450),
   alias contains (250), mood exact (300), mood contains (180), tag exact (200), tag contains
-  (90). Longer matched terms score higher (add `len * 2`). Static and animated compete equally.
+  (90). Longer matched terms score higher (add `len * 2`). Animated stickers receive a 1.08×
+  score bonus so close matches prefer animation; a clearly stronger static match still wins.
 - Optional `type` filter. Return `{ match, candidates }`, where `candidates` is the top 5 compact
   entries used in no-match diagnostics.
 - Deterministic tie-break: higher score, then catalog order.
@@ -265,8 +266,8 @@ export function apply(ctx, config) { ... }
    `ctx.tools.get('send_sticker', scope)` is present:
    `Lynn stickers: when the user's moment is emotional or playful (thanks, greeting,
    celebration, frustration, a funny failure, a break), you may call send_sticker with a short
-   mood phrase. At most one per turn; never let a sticker replace a substantive answer, and skip
-   it for routine or serious tasks.`
+   mood phrase. When several stickers fit, prefer an animated sticker. At most one per turn;
+   never let a sticker replace a substantive answer, and skip it for routine or serious tasks.`
 4. Refresh metadata in the background with a TTL: fetch
    `${LYNN_STICKER_BASE_URL}/catalog.json` at activation and on a tool call when the cached list is
    older than `LYNN_STICKER_CATALOG_TTL_MS` (default 5 minutes), validate it, and swap the active

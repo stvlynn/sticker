@@ -22,6 +22,7 @@ export const inject = ['tools', 'systemPrompt']
 
 const GUIDANCE = [
   'Lynn stickers: when the user\'s moment is emotional or playful (thanks, greeting, celebration, frustration, a funny failure, a break), you may call `send_sticker` once with a short mood phrase.',
+  'When several stickers fit, prefer an animated sticker.',
   'Never let a sticker replace a substantive answer, and skip it for routine or serious tasks.',
 ].join(' ')
 
@@ -29,6 +30,7 @@ const TOOL_DESCRIPTION = [
   'Send one Lynn-chan chat sticker that fits the current mood or scene.',
   'Use sparingly: at most once per turn, only when it adds warmth or humor, and never as the only response.',
   'Pass a short Chinese or English mood/scene phrase in `mood`; the best sticker is chosen automatically.',
+  'When several stickers fit, prefer an animated sticker.',
   'An optional `id` from a previous result selects an exact sticker.',
 ].join(' ')
 
@@ -172,6 +174,8 @@ function queryTerms(query) {
   return [...terms].filter(term => term.length >= 1)
 }
 
+const ANIMATED_SCORE_BONUS = 1.08
+
 const FIELD_WEIGHTS = [
   ['id', 1000],
   ['title', 600],
@@ -210,7 +214,9 @@ function scoreSticker(sticker, query) {
     }
     total += best
   }
-  return total
+  // Prefer animated stickers when scores are close; a clearly better static
+  // match still wins (the bonus is multiplicative, not absolute).
+  return sticker.type === 'animated' ? total * ANIMATED_SCORE_BONUS : total
 }
 
 function matchSticker(query) {

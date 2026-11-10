@@ -10,6 +10,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn, spawnSync } from 'node:child_process'
+import { matchSticker } from '../packages/sticker-catalog/src/match.mjs'
 import { createInterface } from 'node:readline'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -89,6 +90,8 @@ checkGroup('catalog', () => {
   }
   check(metadataIssues === 0, `every catalog entry has >=2 tags, >=1 mood and root-relative media (${metadataIssues} issues)`)
   check(missingSources === 0, `every catalog source file exists (${missingSources} missing)`)
+  check(matchSticker(catalog, '开心').match?.type === 'animated', 'matcher prefers an animated sticker for 开心')
+  check(matchSticker(catalog, '摸鱼').match?.type === 'static', 'matcher keeps a clearly better static sticker for 摸鱼')
 })
 
 // ── Shared stills ─────────────────────────────────────────────────────────
@@ -214,6 +217,9 @@ async function testApi() {
     check(search.response.ok && search.body.total >= 1, 'GET /api/stickers?q=摸鱼 returns a match')
     check(search.body.items[0]?.title === '摸鱼', 'search result for 摸鱼 is the 摸鱼 sticker first')
     check(search.body.items[0]?.imageUrl?.startsWith(origin), 'API builds absolute image URLs')
+
+    const preferred = await json('/api/stickers?q=%E5%BC%80%E5%BF%83&limit=1')
+    check(preferred.body.items[0]?.type === 'animated', 'REST search prefers an animated sticker for 开心')
 
     const animated = await json('/api/stickers?type=animated&limit=5')
     check(animated.response.ok && animated.body.items.every(item => item.type === 'animated'), 'GET /api/stickers?type=animated filters animated stickers')

@@ -100,7 +100,7 @@
 - **Catalog API**：`packages/sticker-catalog/catalog.json`，覆盖 80 张静态贴纸和 181 张动态贴纸。
 - **REST / MCP**：`npm run stickers:api` 启动本地 API（含 `/mcp`），`npm run stickers:mcp` 启动 MCP stdio 服务。
 - **DeepSeek Harness 插件**：安装 `packages/dsh-sticker` 后，agent 可以在合适的时候调用
-  `send_sticker`，贴纸直接显示在对话里。插件本身只有约 68 KB，不打包任何贴纸图片/WebM；
+  `send_sticker`，贴纸直接显示在对话里；匹配时优先选择动态贴纸。插件本身只有约 68 KB，不打包任何贴纸图片/WebM；
   图片和动态图按需从 `https://sticker.stv.pm` 加载。贴纸媒体和完整 catalog 都不会进入模型上下文。
 
 ```bash

@@ -40,6 +40,8 @@ export function queryTerms(query) {
   return [...terms].filter(term => term.length >= 1)
 }
 
+const ANIMATED_SCORE_BONUS = 1.08
+
 const FIELD_WEIGHTS = [
   { field: 'id', weight: 1000 },
   { field: 'title', weight: 600 },
@@ -79,7 +81,9 @@ export function scoreSticker(sticker, query) {
     }
     total += best
   }
-  return total
+  // Prefer animated stickers when scores are close; a clearly better static
+  // match still wins (the bonus is multiplicative, not absolute).
+  return sticker.type === 'animated' ? total * ANIMATED_SCORE_BONUS : total
 }
 
 /** Compact diagnostic row for a sticker. */

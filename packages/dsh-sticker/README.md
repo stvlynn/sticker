@@ -3,7 +3,8 @@
 A DeepSeek Harness bundle that lets an agent send a Lynn-chan sticker inline in the conversation
 when the moment fits — without putting the sticker catalog or any image into model context.
 
-- One compact model tool: `send_sticker({ mood, id? })`.
+- One compact model tool: `send_sticker({ mood, id? })`; when several stickers fit, the matcher
+  prefers an animated one (with a small score bonus) and the prompt asks the model to do the same.
 - One short system-prompt hint, about 55 words.
 - One-line tool results (`Sent sticker "摸鱼".`), no images or base64 in model context.
 - The sticker is rendered at the **end of the completed turn** through
