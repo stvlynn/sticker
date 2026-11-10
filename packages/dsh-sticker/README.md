@@ -12,8 +12,13 @@ when the moment fits — without putting the sticker catalog or any image into m
   collapsed tool-call group. The browser loads the media on demand from **https://sticker.stv.pm**;
   animated stickers play the site's WebM and fall back to the poster under reduced motion.
 - The npm package bundles **no sticker media** — only the compact matching metadata
-  (`lib/catalog.json`, ~120 KB) and the host/client code. The published tarball is ~68 KB.
+  (`lib/catalog.json`, ~120 KB) and the host/client code. The published tarball is ~72 KB.
 - A soft limit of one sticker per assistant turn.
+- Automatic triggers: a host projection (`lynnStickerAuto`) folds turn events and shows a sticker at
+  the turn tail when the user's message matches a social/emotional intent (thanks, greeting, food,
+  tired, angry, confused, celebration, …) or when a substantive task completes or fails. A manual
+  `send_sticker` call always wins. Meta/development talk and explicit "no sticker" messages are
+  ignored. Auto stickers add no model context.
 
 ## Install
 

@@ -128,7 +128,7 @@ plugin_manager install_bundle target=dsh-lynn-sticker@1.1.0
 plugin_manager install_bundle target=/Users/steven/code/sticker/packages/dsh-sticker
 ```
 
-The package is intentionally tiny (~68 KB tarball): it ships only the host/client code, the
+The package is intentionally tiny (~72 KB tarball): it ships only the host/client code, the
 metadata catalog, icon, locales and LICENSE. **No sticker images or WebM loops are packaged.**
 
 The bundle registers:
@@ -140,6 +140,26 @@ The bundle registers:
   that renders the sticker at the end of the completed turn. The tail placement makes the sticker
   visible in normal conversation flow without expanding collapsed tool calls, and loads the
   image/WebM directly from `https://sticker.stv.pm`.
+
+### Automatic triggers
+
+The host registers a lightweight session projection (`lynnStickerAuto`) that folds the durable
+`turn/start`, `user/message`, `assistant/message`, `tool/call` and `tool/result` events. At
+`turn/end` it decides one automatic sticker per turn:
+
+- social/emotional user intent: thanks, greeting, food, coffee, tired, angry, bug/failure,
+  confusion, celebration, encouragement, surprise, crying, laughter, money, affection, slacking,
+  bubble tea, explicit sticker request;
+- task completion: a mutation tool (`edit`, `write`, `apply_patch`, `bash`, terminal) ran with no
+  tool errors and the assistant reported success/完成/上线, yielding `Celebration`;
+- task failure: a mutation ran with tool errors and the assistant reported failure, yielding
+  `This Is Fine`.
+
+A manual `send_sticker` result suppresses the automatic one. Meta/development discussion
+(`插件`, `hook`, `触发概率`, `工具调用`, lists, …) and explicit "不要发表情包" messages are
+ignored. The decision is a pure fold of durable events, so it replays deterministically and adds
+nothing to model context. The client reads the wire view via `useProjection('lynnStickerAuto')` and
+renders the sticker at the turn tail.
 
 ### Remote media and catalog
 
@@ -180,7 +200,7 @@ npm run stickers:pack
 ```
 
 The packaging script fails if the tarball bundles any sticker media or references a non-site
-relative path. The result is about 68 KB and contains both halves, the manifests, the metadata
+relative path. The result is about 72 KB and contains both halves, the manifests, the metadata
 catalog, the icon, locales and LICENSE.
 
 ## Verification

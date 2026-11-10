@@ -11,6 +11,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawn, spawnSync } from 'node:child_process'
 import { matchSticker } from '../packages/sticker-catalog/src/match.mjs'
+import { apply as applyStickerHost } from '../packages/dsh-sticker/lib/index.js'
 import { createInterface } from 'node:readline'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -120,6 +121,7 @@ checkGroup('dsh bundle', () => {
   }
   const clientSource = readFileSync(join(dshDir, 'lib/client.js'), 'utf8')
   check(clientSource.includes('conversation.chat.turnTail') && clientSource.includes('selectStickerForTurn'), 'client registers a visible turn-tail sticker renderer')
+  check(clientSource.includes("useProjection('lynnStickerAuto')"), 'client reads the auto-sticker projection')
   const manifest = JSON.parse(readFileSync(join(dshDir, 'package.json'), 'utf8'))
   check(manifest.dsh?.bundle?.patch === './cordis.patch.yml', 'package.json declares dsh.bundle.patch')
   check(manifest.dsh?.client?.platform === 'web', 'package.json declares dsh.client.platform=web')
@@ -381,7 +383,54 @@ async function testRemoteMedia() {
   }
 }
 
+// ── Auto-sticker projection / task hooks ──────────────────────────────────
+async function testAutoProjection() {
+  let projection
+  const ctx = {
+    effect: fn => { const clean = fn(); return typeof clean === 'function' ? clean : () => {} },
+    tools: { register: () => () => {}, get: () => undefined },
+    systemPrompt: { section: () => () => {}, getSectionOrder: () => 0 },
+    sessionProjections: { register: async definition => { projection = definition; return { dispose: async () => {} } } },
+    inject: () => {},
+    get: () => undefined,
+  }
+  await applyStickerHost(ctx)
+  check(projection?.key === 'lynnStickerAuto', 'host registers the lynnStickerAuto projection')
+  if (projection === undefined) return
+  const event = (type, data) => ({ type, data, seq: 0, time: 0 })
+  const fold = events => {
+    let state = projection.init({}, 0)
+    for (const item of events) state = projection.apply(state, item)
+    return projection.wire.view(state)
+  }
+  const base = [event('turn/start', { turn: 1 })]
+  const user = text => event('user/message', { source: { kind: 'user' }, content: [{ type: 'text', text }] })
+  const toolCall = (callId, name) => event('tool/call', { turn: 1, callId, name, arguments: '{}' })
+  const toolResult = (callId, isError = false) => event('tool/result', { turn: 1, message: { toolCallId: callId, isError, content: [] } })
+  const assistant = text => event('assistant/message', { turn: 1, message: { content: [{ type: 'text', text }] } })
+  const end = () => event('turn/end', { turn: 1 })
+
+  check(fold([...base, user('谢谢你'), end()])['1']?.title === '贴贴', 'auto hook: thanks message selects 贴贴')
+  check(fold([...base, user('你好'), end()])['1']?.type === 'animated', 'auto hook: greeting prefers an animated sticker')
+  const task = fold([...base, user('帮我修一下这个功能'), toolCall('c1', 'edit'), toolResult('c1'), assistant('已修复完成'), end()])
+  check(task['1']?.title === 'Celebration', 'auto hook: completed task selects Celebration')
+  const failed = fold([...base, user('帮我修一下这个功能'), toolCall('c1', 'edit'), toolResult('c1', true), assistant('失败了'), end()])
+  check(failed['1']?.title === 'This Is Fine 1', 'auto hook: failed task selects This Is Fine')
+  check(fold([...base, user('不要发表情包'), end()])['1'] === null, 'auto hook: explicit refusal selects nothing')
+  check(fold([...base, user('sticker列表是硬编码的还是动态检索的'), end()])['1'] === null, 'auto hook: technical/meta discussion selects nothing')
+  const manual = fold([...base, user('谢谢你'), toolCall('c1', 'send_sticker'), toolResult('c1'), end()])
+  check(manual['1'] === null, 'auto hook: manual send_sticker suppresses the auto sticker')
+}
+
 // ── Run async suites ──────────────────────────────────────────────────────
+try {
+  await testAutoProjection()
+} catch (error) {
+  failed++
+  failures.push(`auto projection: ${error instanceof Error ? error.message : String(error)}`)
+  console.error(`FAIL auto projection: ${error instanceof Error ? error.stack ?? error.message : String(error)}`)
+}
+
 try {
   await testApi()
 } catch (error) {

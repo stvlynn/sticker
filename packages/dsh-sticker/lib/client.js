@@ -93,9 +93,13 @@ window.__ModuleLoader__.load({
       return h(StickerMedia, { meta })
     }
 
+    function turnNumberOf(turn) {
+      return turn !== null && typeof turn === 'object' ? turn.turn : turn
+    }
+
     /** Find the last successful `send_sticker` result in one completed Turn. */
     function selectStickerForTurn(snapshot, turn) {
-      const turnNumber = turn !== null && typeof turn === 'object' ? turn.turn : turn
+      const turnNumber = turnNumberOf(turn)
       const keys = snapshot?.locations?.getTurn?.(turnNumber)
       if (keys === undefined || keys === null) return null
       for (let index = keys.length - 1; index >= 0; index--) {
@@ -116,7 +120,11 @@ window.__ModuleLoader__.load({
      * tool-call group, so it is visible in normal conversation flow.
      */
     function StickerTail(props) {
-      const meta = props.useChat(snapshot => selectStickerForTurn(snapshot, props.turn))
+      const autoByTurn = props.useProjection('lynnStickerAuto')
+      const manual = props.useChat(snapshot => selectStickerForTurn(snapshot, props.turn))
+      const turnNumber = turnNumberOf(props.turn)
+      const auto = autoByTurn !== null && typeof autoByTurn === 'object' ? autoByTurn[String(turnNumber)] : null
+      const meta = manual ?? auto
       if (!meta) return null
       return h(StickerMedia, { meta })
     }

@@ -323,7 +323,7 @@ window.__ModuleLoader__.load({
 - Reads the canonical catalog and writes `lib/catalog.json` with only matching metadata and
   root-relative site paths: `{ id, order, title, type, tags, moods, whenToUse, image, video }`.
 - Bundles **no images or WebM loops**; `package.json` exposes no `./assets/*` export and the
-  tarball is about 68 KB.
+  tarball is about 72 KB.
 - The canonical build also writes `public/catalog.json` so the deployed site can serve it for the
   background refresh.
 - The shared 256px WebP stills under `packages/sticker-catalog/assets/thumbs` remain only for the
